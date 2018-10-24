@@ -1,0 +1,20 @@
+// Comment
+
+/* Multiline
+    comment  */
+
+int main() {
+    int (a, b, c) = read("%d %d %d")
+
+    int[] arr = 1..10
+
+    for (c, [i] : arr) {
+        string str = "a[%d] = %d" << (i, c)
+        print(str)
+    }
+
+    a, b, c = b, c, a
+
+    print("a: %d, b: %d, c: %d" << (a, b, c))
+}
+
