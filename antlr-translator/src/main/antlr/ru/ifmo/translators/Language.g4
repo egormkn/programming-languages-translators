@@ -372,13 +372,6 @@ enumerator
 
 
 
-
-nestedParenthesesBlock
-    :   (   ~('(' | ')')
-        |   '(' nestedParenthesesBlock ')'
-        )*
-    ;
-
 pointer
     : ('*' | '^') TypeQualifier* pointer?
     ;

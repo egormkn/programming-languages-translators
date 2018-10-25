@@ -9,11 +9,11 @@ cPrime: k cPrime | ;
 
 k: t KPrime;
 
-KPrime: RegExp('[+*]?');
+KPrime: RegExp("[+*]?");
 
 t: Lparen e Rparen | Letter;
 
 Bar: '|';
 Lparen: '(';
 Rparen: ')';
-Letter: RegExp('[a-z]');
+Letter: RegExp("[a-z]");

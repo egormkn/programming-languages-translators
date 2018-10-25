@@ -8,15 +8,19 @@
     <artifactId>parser-generator</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
     <build>
+        <sourceDirectory>${basedir}/src/main/antlr</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>
                 <version>4.7.1</version>
                 <configuration>
-                    <sourceDirectory>${basedir}/src/main/resources</sourceDirectory>
+                    <sourceDirectory>${basedir}/src/main/antlr</sourceDirectory>
                 </configuration>
                 <executions>
                     <execution>
