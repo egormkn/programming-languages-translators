@@ -25,8 +25,12 @@ grammar Language;
         return new FilteredStringJoiner(delim);
     }
 
-    static <T> T nullable(T given, T def) {
+    static String nullable(String given, String def) {
         return given != null ? given : def;
+    }
+
+    static String nullable(String pref, String given, String suff, String def) {
+        return given != null ? (pref + given + suff) : def;
     }
 }
 
@@ -43,8 +47,8 @@ unit // OK
     returns [String code]
     : function
         {$code = $function.code;}
-    | declaration
-        {$code = $declaration.code;}
+    | declaration ';'
+        {$code = $declaration.code + ";";}
     | directive
         {$code = $directive.code;}
     | ';' // stray ';' character
@@ -52,12 +56,12 @@ unit // OK
 
 function // OK
     returns [String code]
-    : (specifiers+=declarationSpecifier)* declarator (declarations+=declaration)* compoundStatement[true]
+    : (specifiers+=declarationSpecifier)* declarator (declarations+=declaration ';')* compoundStatement[true]
         {
             $code = joiner(" ")
                     .add(stringify($specifiers, s -> s.code, " "))
                     .add($declarator.code)
-                    .add(stringify($declarations, d -> d.code, " "))
+                    .add(stringify($declarations, d -> d.code + ";", " "))
                     .add($compoundStatement.code)
                     .toString();
         }
@@ -65,10 +69,10 @@ function // OK
 
 declaration
     returns [String code]
-    : (specifiers+=declarationSpecifier)+ initDeclaratorList? ';'
+    : (specifiers+=declarationSpecifier)+ initDeclaratorList?
         {
             $code = stringify($specifiers, s -> s.code, " ")
-                    + " " + $initDeclaratorList.code + ";";
+                    + " " + $initDeclaratorList.code;
         }
     ;
 
@@ -129,20 +133,25 @@ directDeclarator
     |   '(' typeSpecifier? pointer directDeclarator ')' // function pointer like: (__cdecl *f)
     ;
 
-compoundStatement[boolean outer]
+compoundStatement[boolean outer] // OK
     returns [String code]
     locals [
         int level
     ]
     @init {
-        $level = outer ? 0 : ($blockItem::level + 1);
-        System.err.println($level);
+        $level = outer ? 0 : ($item::level + 1);
     }
-    : '{' (items+=blockItem)* '}'
-        {$code = "{\n" + stringify($items, u -> spaces($level * 4 + 4) + u.code, "\n") + "\n" + spaces($level * 4) + "}";}
+    : '{' (items+=item)* '}'
+        {
+            $code = joiner("\n")
+                    .add("{")
+                    .add(stringify($items, u -> spaces($level * 4 + 4) + u.code, "\n"))
+                    .add(spaces($level * 4) + "}")
+                    .toString();
+        }
     ;
 
-blockItem
+item // OK
     returns [String code]
     locals [
         int level
@@ -150,8 +159,10 @@ blockItem
     @init {
         $level = $compoundStatement::level;
     }
-    : statement {$code = $statement.code;}
-    | declaration {$code = $declaration.code;}
+    : statement
+        {$code = $statement.code;}
+    | declaration ';'
+        {$code = $declaration.code + ";";}
     ;
 
 
@@ -198,6 +209,10 @@ argumentExpressionList
     ;
 
 unaryExpression
+    returns [String code]
+    @after {
+        $code = $text;
+    }
     :   postfixExpression
     |   '++' unaryExpression
     |   '--' unaryExpression
@@ -276,6 +291,8 @@ logicalOrExpression
     ;
 
 conditionalExpression
+    returns [String code]
+    @after {$code = $text;}
     :   logicalOrExpression ('?' expression ':' conditionalExpression)?
     ;
 
@@ -299,8 +316,10 @@ expression
         {$code = stringify($expressions, e -> e.code, ", ");}
     ;
 
-constantExpression
-    :   conditionalExpression
+constantExpression // OK
+    returns [String code]
+    : conditionalExpression
+        {$code = $conditionalExpression.code;}
     ;
 
 
@@ -345,13 +364,10 @@ enumeratorList
     ;
 
 enumerator
-    :   enumerationConstant
-    |   enumerationConstant '=' constantExpression
+    : Identifier
+    | Identifier '=' constantExpression
     ;
 
-enumerationConstant
-    :   Identifier
-    ;
 
 
 
@@ -364,7 +380,7 @@ nestedParenthesesBlock
     ;
 
 pointer
-    : ('*' | '^') typeQualifierList? pointer?
+    : ('*' | '^') TypeQualifier* pointer?
     ;
 
 typeQualifierList
@@ -437,70 +453,117 @@ designator
     |   '.' Identifier
     ;
 
-statement
+statement // OK
     returns [String code]
     : labeledStatement
-        {$code = $labeledStatement.text;}
+        {$code = $labeledStatement.code;}
     | compoundStatement[false]
         {$code = $compoundStatement.code;}
     | expressionStatement
-        {$code = $expressionStatement.text;}
+        {$code = $expressionStatement.code;}
     | selectionStatement
-        {$code = $selectionStatement.text;}
+        {$code = $selectionStatement.code;}
     | iterationStatement
         {$code = $iterationStatement.code;}
     | jumpStatement
-        {$code = $jumpStatement.text;}
+        {$code = $jumpStatement.code;}
     ;
 
 labeledStatement
-    :   Identifier ':' statement
-    |   'case' constantExpression ':' statement
-    |   'default' ':' statement
+    returns [String code]
+    : 'case' constantExpression ':' statement
+        {$code = "case " + $constantExpression.code + ": " + $statement.code;}
+    | 'default' ':' statement
+        {$code = "default: " + $statement.code;}
+    | Identifier ':' statement
+        {$code = $Identifier.text + ": " + $statement.code;}
     ;
 
-expressionStatement
-    :   expression? ';'
+expressionStatement // OK
+    returns [String code]
+    : expression? ';'
+        {$code = nullable($expression.code, "") + ";";}
     ;
 
-selectionStatement
-    :   'if' '(' expression ')' statement ('else' statement)?
-    |   'switch' '(' expression ')' statement
+selectionStatement // OK
+    returns [String code]
+    : 'if' '(' expression ')' iftrue=statement ('else' iffalse=statement)?
+        {$code = "if (" + $expression.code + ") " + $iftrue.code + nullable(" else ", $iffalse.code, "", "");}
+    | 'switch' '(' expression ')' statement
+        {$code = "switch (" + $expression.code + ") " + $statement.code;}
     ;
 
-iterationStatement
+iterationStatement // OK
     returns [String code]
     : While '(' expression ')' statement
         {$code = "while (" + $expression.code + ") " + $statement.code;}
     | Do statement While '(' expression ')' ';'
         {$code = "do " + $statement.code + " while (" + $expression.code + ");";}
     | For '(' forCondition ')' statement
-        {$code = "for (" + $forCondition.text + ") " + $statement.code;}
+        {$code = "for (" + $forCondition.code + ") " + $statement.code;}
     ;
 
-//    |   'for' '(' expression? ';' expression?  ';' forUpdate? ')' statement
-//    |   For '(' declaration  expression? ';' expression? ')' statement
-
-forCondition
-	:   forDeclaration ';' forExpression? ';' forExpression?
-	|   expression? ';' forExpression? ';' forExpression?
+forCondition // OK
+    returns [String code]
+	: for1d=declaration ';' for2=expression? ';' for3=expression?
+	    {
+	        $code = joiner("; ")
+                    .add($for1d.code)
+                    .add(nullable($for2.code, ""))
+                    .add(nullable($for3.code, ""))
+                    .toString();
+	    }
+	| for1e=expression? ';' for2=expression? ';' for3=expression?
+	    {
+	        $code = joiner("; ")
+                    .add(nullable($for1e.code, ""))
+                    .add(nullable($for2.code, ""))
+                    .add(nullable($for3.code, ""))
+                    .toString();
+	    }
 	;
 
-forDeclaration
-    :   declarationSpecifier+ initDeclaratorList?
-    ;
-
-forExpression
-    :   assignmentExpression
-    |   forExpression ',' assignmentExpression
-    ;
-
-jumpStatement
-    :   Goto Identifier ';'
-    |   Continue ';'
-    |   Break ';'
-    |   Return expression? ';'
-    |   Goto unaryExpression ';' // GCC extension
+jumpStatement // OK
+    returns [String code]
+    : Goto Identifier Semicolon
+        {
+            $code = joiner("")
+                    .add($Goto.text)
+                    .add(" ")
+                    .add($Identifier.text)
+                    .add($Semicolon.text)
+                    .toString();
+        }
+    | Continue Semicolon
+        {
+            $code = joiner("")
+                    .add($Continue.text)
+                    .add($Semicolon.text)
+                    .toString();
+        }
+    | Break Semicolon
+        {
+            $code = joiner("")
+                    .add($Break.text)
+                    .add($Semicolon.text)
+                    .toString();
+        }
+    | Return expression? Semicolon
+        {
+            $code = joiner("")
+                    .add($Return.text)
+                    .add(nullable(" ", $expression.code, $Semicolon.text, $Semicolon.text))
+                    .toString();
+        }
+    | Goto unaryExpression Semicolon // GCC extension
+        {
+            $code = joiner("")
+                    .add($Goto.text)
+                    .add(" ")
+                    .add($unaryExpression.code)
+                    .add($Semicolon.text)
+                    .toString();
+        }
     ;
 
 
