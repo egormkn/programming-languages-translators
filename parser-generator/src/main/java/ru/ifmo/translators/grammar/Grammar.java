@@ -18,9 +18,10 @@ public class Grammar {
     final Map<String, LexerRule> lexerRules = new LinkedHashMap<>();
     @SuppressWarnings("WeakerAccess")
     final Map<String, ParserRule> parserRules = new LinkedHashMap<>();
-    private final String header, members;
+    private final String name, header, members;
 
     public Grammar(GrammarParser.GrammarFileContext grammarFile) {
+        this.name = grammarFile.name.getText();
         this.header = grammarFile.header == null ? "" : grammarFile.header.getText();
         this.members = grammarFile.members == null ? "" : grammarFile.getText();
 
@@ -52,6 +53,10 @@ public class Grammar {
         GrammarParser.GrammarFileContext grammarFile = parser.grammarFile();
 
         return new Grammar(grammarFile);
+    }
+
+    public String getName() {
+        return name;
     }
 
     public String getHeader() {

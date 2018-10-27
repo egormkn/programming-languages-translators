@@ -1,19 +1,23 @@
 package ru.ifmo.translators.lexer;
 
+import ru.ifmo.translators.grammar.Grammar;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class LexerGenerator {
 
-//    List<GrammarLexerRuleContext> rules;
-//
-//    public LexerGenerator(Grammar lexerRules) {
-//        rules = lexerRules;
-//        for (GrammarLexerRuleContext rule : rules) {
-//
-//        }
-//    }
-//
-//
-//    public void generate(String s) {
-//
-//
-//    }
+    private final Grammar grammar;
+
+    public LexerGenerator(Grammar grammar) {
+        this.grammar = grammar;
+    }
+
+    public void generate(String path) {
+        generate(Paths.get(path));
+    }
+
+    public void generate(Path path) {
+
+    }
 }

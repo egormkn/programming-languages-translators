@@ -19,7 +19,7 @@ public class LexerAlternative extends Token implements LexerToken {
                 org.antlr.v4.runtime.Token repeatText = part.repeat;
                 Repeat repeat = repeatText == null ? Repeat.ONCE : Repeat.get(repeatText.getText());
 
-                LexerToken token = null;
+                LexerToken token;
 
                 org.antlr.v4.runtime.Token lexerRuleName = part.token.lexerRuleName;
                 org.antlr.v4.runtime.Token stringText = part.token.string;

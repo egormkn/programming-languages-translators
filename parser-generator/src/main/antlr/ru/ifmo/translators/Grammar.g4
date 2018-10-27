@@ -1,7 +1,8 @@
 grammar Grammar;
 
 grammarFile
-    : ('@' 'header' header=BracesBlock)?
+    : 'grammar' name=LexerRuleName
+      ('@' 'header' header=BracesBlock)?
       ('@' 'members' members=BracesBlock)?
       (parserRules+=grammarParserRule | lexerRules+=grammarLexerRule)+
       EOF
@@ -40,9 +41,7 @@ parserRuleToken
 
 grammarLexerRule
     : (isFragment=Fragment)?
-      name=LexerRuleName
-      ('@' 'init' init=BracesBlock)?
-      ('@' 'after' after=BracesBlock)? ':'
+      name=LexerRuleName ':'
       alternative=lexerAlternative
       (Arrow isSkip=Skip)? ';';
 
@@ -56,6 +55,7 @@ lexerSequence
 
 lexerSequencePart
     : token=lexerRuleToken (repeat=RuleOperator)?
+      (code=BracesBlock)?
     ;
 
 lexerRuleToken
