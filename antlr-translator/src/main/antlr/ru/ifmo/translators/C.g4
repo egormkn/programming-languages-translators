@@ -1,105 +1,47 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2013 Sam Harwell
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/** C 2011 grammar built from the C11 Spec */
 grammar C;
-
-// https://en.wikipedia.org/wiki/Statement_(computer_science)
-
-program
-    returns [String code]
-    //@init {$builder = new StringBuilder();}
-    : (units+=unit)* EOF
-    ;
-
-unit
-    : function
-    | declaration
-    | directive
-    | ';' // stray ';'
-    ;
-
-function
-    :   declarationSpecifiers? declarator declarationList? compoundStatement
-    ;
-
-declaration
-    :   declarationSpecifiers initDeclaratorList? ';'
-    ;
-
-directive
-    : DirectiveToken
-    ;
-
-DirectiveToken
-    : '#' Whitespace? [a-z]+ Whitespace ~[\r\n]*
-    ;
-
-declarationList
-    :   declaration
-    |   declarationList declaration
-    ;
-
-declarationSpecifiers
-    :   declarationSpecifier+
-    ;
-
-declarationSpecifier
-    :   storageClassSpecifier
-    |   typeSpecifier
-    |   typeQualifier
-    ;
-
-storageClassSpecifier
-    : 'typedef'
-    | 'extern'
-    | 'static'
-    | 'auto'
-    | 'register'
-    ;
-
-typeSpecifier
-    : ( 'void'
-      | 'char'
-      | 'short'
-      | 'int'
-      | 'long'
-      | 'float'
-      | 'double'
-      | 'signed'
-      | 'unsigned')
-    | structOrUnionSpecifier
-    | enumSpecifier
-    | typedefName
-    | typeSpecifier pointer
-    ;
-
-typeQualifier
-    : 'const'
-    | 'volatile'
-    ;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 primaryExpression
     :   Identifier
     |   Constant
     |   StringLiteral+
     |   '(' expression ')'
+    |   genericSelection
+    |   '__extension__'? '(' compoundStatement ')' // Blocks (GCC extension)
+    |   '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
+    |   '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
+    ;
+
+genericSelection
+    :   '_Generic' '(' assignmentExpression ',' genericAssocList ')'
     ;
 
 genericAssocList
@@ -122,6 +64,8 @@ postfixExpression
     |   postfixExpression '--'
     |   '(' typeName ')' '{' initializerList '}'
     |   '(' typeName ')' '{' initializerList ',' '}'
+    |   '__extension__' '(' typeName ')' '{' initializerList '}'
+    |   '__extension__' '(' typeName ')' '{' initializerList ',' '}'
     ;
 
 argumentExpressionList
@@ -136,6 +80,7 @@ unaryExpression
     |   unaryOperator castExpression
     |   'sizeof' unaryExpression
     |   'sizeof' '(' typeName ')'
+    |   '_Alignof' '(' typeName ')'
     |   '&&' Identifier // GCC extension address of label
     ;
 
@@ -231,7 +176,27 @@ constantExpression
     :   conditionalExpression
     ;
 
+declaration
+    :   declarationSpecifiers initDeclaratorList ';'
+	| 	declarationSpecifiers ';'
+    |   staticAssertDeclaration
+    ;
 
+declarationSpecifiers
+    :   declarationSpecifier+
+    ;
+
+declarationSpecifiers2
+    :   declarationSpecifier+
+    ;
+
+declarationSpecifier
+    :   storageClassSpecifier
+    |   typeSpecifier
+    |   typeQualifier
+    |   functionSpecifier
+    |   alignmentSpecifier
+    ;
 
 initDeclaratorList
     :   initDeclarator
@@ -243,10 +208,41 @@ initDeclarator
     |   declarator '=' initializer
     ;
 
+storageClassSpecifier
+    :   'typedef'
+    |   'extern'
+    |   'static'
+    |   '_Thread_local'
+    |   'auto'
+    |   'register'
+    ;
 
+typeSpecifier
+    :   ('void'
+    |   'char'
+    |   'short'
+    |   'int'
+    |   'long'
+    |   'float'
+    |   'double'
+    |   'signed'
+    |   'unsigned'
+    |   '_Bool'
+    |   '_Complex'
+    |   '__m128'
+    |   '__m128d'
+    |   '__m128i')
+    |   '__extension__' '(' ('__m128' | '__m128d' | '__m128i') ')'
+    |   atomicTypeSpecifier
+    |   structOrUnionSpecifier
+    |   enumSpecifier
+    |   typedefName
+    |   '__typeof__' '(' constantExpression ')' // GCC extension
+    |   typeSpecifier pointer
+    ;
 
 structOrUnionSpecifier
-    :   structOrUnion Identifier? '{' structDeclaration+ '}'
+    :   structOrUnion Identifier? '{' structDeclarationList '}'
     |   structOrUnion Identifier
     ;
 
@@ -255,8 +251,14 @@ structOrUnion
     |   'union'
     ;
 
+structDeclarationList
+    :   structDeclaration
+    |   structDeclarationList structDeclaration
+    ;
+
 structDeclaration
     :   specifierQualifierList structDeclaratorList? ';'
+    |   staticAssertDeclaration
     ;
 
 specifierQualifierList
@@ -294,9 +296,33 @@ enumerationConstant
     :   Identifier
     ;
 
+atomicTypeSpecifier
+    :   '_Atomic' '(' typeName ')'
+    ;
+
+typeQualifier
+    :   'const'
+    |   'restrict'
+    |   'volatile'
+    |   '_Atomic'
+    ;
+
+functionSpecifier
+    :   ('inline'
+    |   '_Noreturn'
+    |   '__inline__' // GCC extension
+    |   '__stdcall')
+    |   gccAttributeSpecifier
+    |   '__declspec' '(' Identifier ')'
+    ;
+
+alignmentSpecifier
+    :   '_Alignas' '(' typeName ')'
+    |   '_Alignas' '(' constantExpression ')'
+    ;
 
 declarator
-    :   pointer? directDeclarator
+    :   pointer? directDeclarator gccDeclaratorExtension*
     ;
 
 directDeclarator
@@ -310,6 +336,26 @@ directDeclarator
     |   directDeclarator '(' identifierList? ')'
     |   Identifier ':' DigitSequence  // bit field
     |   '(' typeSpecifier? pointer directDeclarator ')' // function pointer like: (__cdecl *f)
+    ;
+
+gccDeclaratorExtension
+    :   '__asm' '(' StringLiteral+ ')'
+    |   gccAttributeSpecifier
+    ;
+
+gccAttributeSpecifier
+    :   '__attribute__' '(' '(' gccAttributeList ')' ')'
+    ;
+
+gccAttributeList
+    :   gccAttribute (',' gccAttribute)*
+    |   // empty
+    ;
+
+gccAttribute
+    :   ~(',' | '(' | ')') // relaxed def for "identifier or reserved word"
+        ('(' argumentExpressionList? ')')?
+    |   // empty
     ;
 
 nestedParenthesesBlock
@@ -326,11 +372,13 @@ pointer
     ;
 
 typeQualifierList
-    :   typeQualifier+
+    :   typeQualifier
+    |   typeQualifierList typeQualifier
     ;
 
 parameterTypeList
-    :   parameterList (',' '...')?
+    :   parameterList
+    |   parameterList ',' '...'
     ;
 
 parameterList
@@ -339,7 +387,8 @@ parameterList
     ;
 
 parameterDeclaration
-    :   declarationSpecifiers (declarator | abstractDeclarator?)
+    :   declarationSpecifiers declarator
+    |   declarationSpecifiers2 abstractDeclarator?
     ;
 
 identifierList
@@ -353,21 +402,21 @@ typeName
 
 abstractDeclarator
     :   pointer
-    |   pointer? directAbstractDeclarator
+    |   pointer? directAbstractDeclarator gccDeclaratorExtension*
     ;
 
 directAbstractDeclarator
-    :   '(' abstractDeclarator ')'
+    :   '(' abstractDeclarator ')' gccDeclaratorExtension*
     |   '[' typeQualifierList? assignmentExpression? ']'
     |   '[' 'static' typeQualifierList? assignmentExpression ']'
     |   '[' typeQualifierList 'static' assignmentExpression ']'
     |   '[' '*' ']'
-    |   '(' parameterTypeList? ')'
+    |   '(' parameterTypeList? ')' gccDeclaratorExtension*
     |   directAbstractDeclarator '[' typeQualifierList? assignmentExpression? ']'
     |   directAbstractDeclarator '[' 'static' typeQualifierList? assignmentExpression ']'
     |   directAbstractDeclarator '[' typeQualifierList 'static' assignmentExpression ']'
     |   directAbstractDeclarator '[' '*' ']'
-    |   directAbstractDeclarator '(' parameterTypeList? ')'
+    |   directAbstractDeclarator '(' parameterTypeList? ')' gccDeclaratorExtension*
     ;
 
 typedefName
@@ -399,6 +448,10 @@ designator
     |   '.' Identifier
     ;
 
+staticAssertDeclaration
+    :   '_Static_assert' '(' constantExpression ',' StringLiteral+ ')' ';'
+    ;
+
 statement
     :   labeledStatement
     |   compoundStatement
@@ -406,6 +459,7 @@ statement
     |   selectionStatement
     |   iterationStatement
     |   jumpStatement
+    |   ('__asm' | '__asm__') ('volatile' | '__volatile__') '(' (logicalOrExpression (',' logicalOrExpression)*)? (':' (logicalOrExpression (',' logicalOrExpression)*)?)* ')' ';'
     ;
 
 labeledStatement
@@ -419,7 +473,8 @@ compoundStatement
     ;
 
 blockItemList
-    :   blockItem+
+    :   blockItem
+    |   blockItemList blockItem
     ;
 
 blockItem
@@ -468,10 +523,29 @@ jumpStatement
     |   'goto' unaryExpression ';' // GCC extension
     ;
 
+compilationUnit
+    :   translationUnit? EOF
+    ;
 
+translationUnit
+    :   externalDeclaration
+    |   translationUnit externalDeclaration
+    ;
 
+externalDeclaration
+    :   functionDefinition
+    |   declaration
+    |   ';' // stray ;
+    ;
 
+functionDefinition
+    :   declarationSpecifiers? declarator declarationList? compoundStatement
+    ;
 
+declarationList
+    :   declaration
+    |   declarationList declaration
+    ;
 
 Auto : 'auto';
 Break : 'break';
@@ -575,13 +649,17 @@ Dot : '.';
 Ellipsis : '...';
 
 Identifier
-    : IdentifierNondigit (IdentifierNondigit | Digit)*
+    :   IdentifierNondigit
+        (   IdentifierNondigit
+        |   Digit
+        )*
     ;
 
 fragment
 IdentifierNondigit
-    : Nondigit
-    | UniversalCharacterName
+    :   Nondigit
+    |   UniversalCharacterName
+    //|   // other implementation-defined characters...
     ;
 
 fragment
@@ -813,19 +891,58 @@ SChar
     |   '\\\r\n' // Added line
     ;
 
+ComplexDefine
+    :   '#' Whitespace? 'define'  ~[#]*
+        -> skip
+    ;
+
+// ignore the following asm blocks:
+/*
+    asm
+    {
+        mfspr x, 286;
+    }
+ */
+AsmBlock
+    :   'asm' ~'{'* '{' ~'}'* '}'
+	-> skip
+    ;
+
+// ignore the lines generated by c preprocessor
+// sample line : '#line 1 "/home/dm/files/dk1.h" 1'
+LineAfterPreprocessing
+    :   '#line' Whitespace* ~[\r\n]*
+        -> skip
+    ;
+
+LineDirective
+    :   '#' Whitespace? DecimalConstant Whitespace? StringLiteral ~[\r\n]*
+        -> skip
+    ;
+
+PragmaDirective
+    :   '#' Whitespace? 'pragma' Whitespace ~[\r\n]*
+        -> skip
+    ;
 
 Whitespace
-    : [ \t]+ -> skip
+    :   [ \t]+
+        -> skip
     ;
 
 Newline
-    : ('\r' '\n'? | '\n') -> skip
+    :   (   '\r' '\n'?
+        |   '\n'
+        )
+        -> skip
     ;
 
 BlockComment
-    : '/*' .*? '*/' -> skip
+    :   '/*' .*? '*/'
+        -> skip
     ;
 
 LineComment
-    : '//' ~[\r\n]* -> skip
+    :   '//' ~[\r\n]*
+        -> skip
     ;
