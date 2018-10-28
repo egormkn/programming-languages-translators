@@ -1,30 +1,19 @@
 package ru.ifmo.translators.grammar;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.regex.Pattern;
 
 public class LexerCharSet extends Token {
 
     private final String charset;
     private final boolean inverse;
 
-    private final Set<Character> set;
+    private final Pattern pattern;
 
     public LexerCharSet(String charset, boolean inverse) {
         this.charset = charset;
         this.inverse = inverse;
 
-        this.set = new HashSet<>(inverse ? 256 : 4);
-
-        for (int c = 0; inverse && c < 256; c++) {
-            set.add((char) c);
-        }
-
-        charset.chars().mapToObj(i -> (char) i).forEach(inverse ? set::remove : set::add);
-    }
-
-    public Set<Character> getSet() {
-        return set;
+        this.pattern = Pattern.compile(charset);
     }
 
     public String getCharset() {
@@ -33,6 +22,10 @@ public class LexerCharSet extends Token {
 
     public boolean isInverse() {
         return inverse;
+    }
+
+    public boolean test(char c) {
+        return inverse != pattern.matcher(Character.toString(c)).find();
     }
 
     @Override
