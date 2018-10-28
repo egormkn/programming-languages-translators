@@ -70,7 +70,8 @@ BracesBlock: '{' (~['"{}] | SingleQuoteString | DoubleQuoteString | BracesBlock)
     String text = getText();
     setText(text.substring(1, text.length() - 1));
 };
-BracketsBlock: '[' (~['"[\]] | SingleQuoteString | DoubleQuoteString | BracketsBlock)* ']' {
+
+BracketsBlock: '[' (~[\\\]] | [\\] . )* ']' {
     String text = getText();
     setText(text.substring(1, text.length() - 1));
 };
@@ -92,11 +93,12 @@ AssignOperator
 Assign: '=';
 AddAssign: '+=';
 
-SingleQuoteString: '\'' (~['] | '\\\'')* '\'' {
+SingleQuoteString: '\'' (~[\\'] | [\\] . )* '\'' {
     String text = getText();
     setText(text.substring(1, text.length() - 1));
 };
-DoubleQuoteString: '"' (~["] | '\\"')* '"' {
+
+DoubleQuoteString: '"' (~[\\"] | [\\] . )* '"' {
     String text = getText();
     setText(text.substring(1, text.length() - 1));
 };

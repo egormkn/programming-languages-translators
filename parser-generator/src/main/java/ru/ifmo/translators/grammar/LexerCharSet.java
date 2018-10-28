@@ -13,7 +13,7 @@ public class LexerCharSet extends Token {
         this.charset = charset;
         this.inverse = inverse;
 
-        this.pattern = Pattern.compile(charset);
+        this.pattern = Pattern.compile("[" + charset + "]");
     }
 
     public String getCharset() {
