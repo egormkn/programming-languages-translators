@@ -5,17 +5,25 @@ import ru.ifmo.translators.lexer.LexerGenerator;
 import ru.ifmo.translators.parser.ParserGenerator;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Generator {
 
     public static void main(String[] args) {
 
-        try {
-            Grammar grammar = Grammar.parse("src/main/resources/Test.g4");
-            System.out.println(grammar);
+        if (args.length < 1) {
+            throw new IllegalArgumentException("Please specify the grammar file");
+        }
 
-            new LexerGenerator(grammar).generate("src/test/java/TestLexer.java");
-            new ParserGenerator(grammar).generate("src/test/java/TestParser.java");
+        Path grammarFile = Paths.get(args[0]);
+        Path outputFolder = Paths.get(args.length > 1 ? args[1] : "");
+
+        try {
+            Grammar grammar = Grammar.parse(grammarFile);
+            System.err.println(grammar);
+            new LexerGenerator(grammar).generate(outputFolder);
+            new ParserGenerator(grammar).generate(outputFolder);
         } catch (IOException e) {
             e.printStackTrace();
         }
