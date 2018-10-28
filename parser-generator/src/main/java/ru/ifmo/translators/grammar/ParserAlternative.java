@@ -15,6 +15,10 @@ public class ParserAlternative extends Token {
         for (GrammarParser.ParserSequenceContext sequence : alternative.sequences) {
             List<Token> tokens = new ArrayList<>();
 
+            if (sequence.parts.size() == 0) {
+                tokens.add(new LexerString(""));
+            }
+
             for (GrammarParser.ParserSequencePartContext part : sequence.parts) {
                 GrammarParser.ParserRuleTokenContext tokenContext = part.token;
 

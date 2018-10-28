@@ -14,6 +14,6 @@ public class LexerString extends Token {
 
     @Override
     public String toString() {
-        return "'" + string + "'";
+        return string.isEmpty() ? "" : "'" + string + "'";
     }
 }
