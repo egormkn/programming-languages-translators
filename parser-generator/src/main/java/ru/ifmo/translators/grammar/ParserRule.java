@@ -4,7 +4,7 @@ import ru.ifmo.translators.GrammarParser;
 
 import java.util.List;
 
-public class ParserRule extends Token {
+public class ParserRule implements ParserToken {
 
     private final String name, args, ret, initCode, afterCode;
 
@@ -47,7 +47,7 @@ public class ParserRule extends Token {
         return alternative;
     }
 
-    public List<List<Token>> getAlternatives() {
+    public List<List<ParserAlternative.Wrapper>> getAlternatives() {
         return alternative.getAlternatives();
     }
 

@@ -2,7 +2,7 @@ package ru.ifmo.translators.grammar;
 
 import java.util.regex.Pattern;
 
-public class LexerCharSet extends Token {
+public class LexerCharSet implements LexerToken {
 
     private final String charset;
     private final boolean inverse;
@@ -12,8 +12,7 @@ public class LexerCharSet extends Token {
     public LexerCharSet(String charset, boolean inverse) {
         this.charset = charset;
         this.inverse = inverse;
-
-        this.pattern = Pattern.compile("[" + charset + "]");
+        this.pattern = Pattern.compile("[" + (inverse ? "^" : "") + charset + "]");
     }
 
     public String getCharset() {
@@ -25,7 +24,7 @@ public class LexerCharSet extends Token {
     }
 
     public boolean test(char c) {
-        return inverse != pattern.matcher(Character.toString(c)).find();
+        return pattern.matcher(Character.toString(c)).find();
     }
 
     @Override

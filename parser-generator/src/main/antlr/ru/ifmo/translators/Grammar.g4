@@ -21,16 +21,16 @@ parserAlternative
     ;
 
 parserSequence
-    : (parts+=parserSequencePart)*
+    : (wrappers+=parserTokenWrapper)*
     ;
 
-parserSequencePart
+parserTokenWrapper
     : (customName=ParserRuleName customOp=AssignOperator)?
-      token=parserRuleToken (repeat=RuleOperator)?
+      token=parserToken (repeat=RuleOperator)?
       (code=BracesBlock)?
     ;
 
-parserRuleToken
+parserToken
     : lexerRuleName=LexerRuleName
     | parserRuleName=ParserRuleName (args=BracketsBlock)?
     | string=SingleQuoteString
@@ -50,15 +50,15 @@ lexerAlternative
     ;
 
 lexerSequence
-    : (parts+=lexerSequencePart)+
+    : (wrappers+=lexerTokenWrapper)*
     ;
 
-lexerSequencePart
-    : token=lexerRuleToken (repeat=RuleOperator)?
+lexerTokenWrapper
+    : token=lexerToken (repeat=RuleOperator)?
       (code=BracesBlock)?
     ;
 
-lexerRuleToken
+lexerToken
     : lexerRuleName=LexerRuleName
     | string=SingleQuoteString
     | (inverse='~')? charset=BracketsBlock

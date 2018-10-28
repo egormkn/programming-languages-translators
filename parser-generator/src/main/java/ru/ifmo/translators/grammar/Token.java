@@ -1,58 +1,14 @@
 package ru.ifmo.translators.grammar;
 
-@SuppressWarnings({"unused", "UnusedReturnValue"})
-public abstract class Token {
+public interface Token {
 
-    private Repeat repeat;
-    private String customName, customOp, code;
-
-    public Repeat getRepeat() {
-        return repeat;
-    }
-
-    public String getRepeatOp() {
-        return repeat.operator;
-    }
-
-    Token setRepeat(Repeat repeat) {
-        this.repeat = repeat;
-        return this;
-    }
-
-    public String getCustomName() {
-        return customName;
-    }
-
-    Token setCustomName(String customName) {
-        this.customName = customName;
-        return this;
-    }
-
-    public String getCustomOp() {
-        return customOp;
-    }
-
-    Token setCustomOp(String customOp) {
-        this.customOp = customOp;
-        return this;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    Token setCode(String code) {
-        this.code = code;
-        return this;
-    }
-
-    public enum Repeat {
+    enum Repeat {
         MAYBE("?"),
         ONCE(""),
         SOME("+"),
         ANY("*");
 
-        String operator;
+        private String operator;
 
         Repeat(String operator) {
             this.operator = operator;
@@ -64,7 +20,12 @@ public abstract class Token {
                     return r;
                 }
             }
-            throw new IllegalArgumentException("Wrong repeat operator");
+            throw new IllegalArgumentException("Wrong repeat operator: " + operator);
+        }
+
+        @Override
+        public String toString() {
+            return operator;
         }
     }
 }

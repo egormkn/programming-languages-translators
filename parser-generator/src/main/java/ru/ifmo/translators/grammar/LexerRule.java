@@ -4,22 +4,28 @@ import ru.ifmo.translators.GrammarParser;
 
 import java.util.List;
 
-public class LexerRule extends Token {
+public class LexerRule implements LexerToken, ParserToken {
 
     private final boolean isFragment, isSkip;
     private final String name;
 
-    private final GrammarParser.LexerAlternativeContext alternativeContext;
-
+    private GrammarParser.LexerAlternativeContext alternativeContext;
     private LexerAlternative alternative;
 
     public LexerRule(GrammarParser.GrammarLexerRuleContext rule) {
-        isFragment = rule.isFragment != null;
-        isSkip = rule.isSkip != null;
-        name = rule.name.getText();
+        this.isFragment = rule.isFragment != null;
+        this.isSkip = rule.isSkip != null;
+        this.name = rule.name.getText();
+        this.alternativeContext = rule.alternative;
+        this.alternative = null;
+    }
 
-        alternativeContext = rule.alternative;
-        alternative = null;
+    LexerRule(String name, boolean isFragment, boolean isSkip, LexerAlternative alternative) {
+        this.isFragment = isFragment;
+        this.isSkip = isSkip;
+        this.name = name;
+        this.alternativeContext = null;
+        this.alternative = alternative;
     }
 
     public boolean isFragment() {
@@ -38,12 +44,20 @@ public class LexerRule extends Token {
         return alternative;
     }
 
-    public List<List<Token>> getAlternatives() {
+    private void setAlternative(LexerAlternative alternative) {
+        this.alternative = alternative;
+    }
+
+    public List<List<LexerAlternative.Wrapper>> getAlternatives() {
         return alternative.getAlternatives();
     }
 
     public void bind(Grammar grammar) {
-        alternative = new LexerAlternative(alternativeContext, grammar);
+        if (alternativeContext != null) {
+            setAlternative(new LexerAlternative(alternativeContext, grammar));
+        } else {
+            throw new AssertionError("Do not bind the grammar to manually constructed rule");
+        }
     }
 
     @Override

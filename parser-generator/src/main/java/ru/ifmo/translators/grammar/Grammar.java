@@ -12,12 +12,11 @@ import java.util.stream.Collectors;
 
 public class Grammar {
 
-    final Map<String, Token> dictionary = new HashMap<>();
-
-    final Map<String, LexerRule> lexerRules = new LinkedHashMap<>();
-    final Map<String, ParserRule> parserRules = new LinkedHashMap<>();
-
+    private final LinkedHashMap<String, LexerRule> lexerRules = new LinkedHashMap<>();
+    private final LinkedHashMap<String, ParserRule> parserRules = new LinkedHashMap<>();
     private final String name, header, members;
+
+    private final Map<String, LexerRule> dictionary = new HashMap<>();
 
     public Grammar(GrammarParser.GrammarFileContext grammarFile) {
         this.name = grammarFile.name.getText();
@@ -30,13 +29,15 @@ public class Grammar {
         }
         lexerRules.forEach((String key, LexerRule rule) -> rule.bind(this));
 
-        buildDictionary();
+        flattenLexerAlternatives();
 
         for (GrammarParser.GrammarParserRuleContext rule : grammarFile.parserRules) {
             ParserRule parserRule = new ParserRule(rule);
             parserRules.put(parserRule.getName(), parserRule);
         }
         parserRules.forEach((String key, ParserRule rule) -> rule.bind(this));
+
+        buildDictionary();
     }
 
     public static Grammar parse(Path path) throws IOException {
@@ -48,11 +49,72 @@ public class Grammar {
 
     private void buildDictionary() {
         for (LexerRule rule : lexerRules.values()) {
-            List<List<Token>> alternatives = rule.getAlternatives();
+            List<List<LexerAlternative.Wrapper>> alternatives = rule.getAlternatives();
             if (alternatives.size() == 1 && alternatives.get(0).size() == 1) {
-                Token str = alternatives.get(0).get(0);
-                if (str instanceof LexerString) {
-                    dictionary.put(((LexerString) str).getString(), rule);
+                LexerAlternative.Wrapper wrapper = alternatives.get(0).get(0);
+                LexerToken token = wrapper.getToken();
+                if (token instanceof LexerString) {
+                    dictionary.put(((LexerString) token).getString(), rule);
+                }
+            }
+        }
+
+        for (LexerRule rule : lexerRules.values()) {
+            for (List<LexerAlternative.Wrapper> wrappers : rule.getAlternatives()) {
+                for (ListIterator<LexerAlternative.Wrapper> iter = wrappers.listIterator(); iter.hasNext(); ) {
+                    LexerAlternative.Wrapper wrapper = iter.next();
+                    LexerToken token = wrapper.getToken();
+                    if (token instanceof LexerString) {
+                        String str = ((LexerString) token).getString();
+                        LexerRule fromDict = dictionary.get(str);
+                        if (fromDict != null && fromDict != rule) {
+                            iter.set(new LexerAlternative.Wrapper(fromDict, wrapper.getRepeat()));
+                        }
+                    }
+                }
+            }
+        }
+
+        for (ParserRule rule : parserRules.values()) {
+            for (List<ParserAlternative.Wrapper> wrappers : rule.getAlternatives()) {
+                for (ListIterator<ParserAlternative.Wrapper> iter = wrappers.listIterator(); iter.hasNext(); ) {
+                    ParserAlternative.Wrapper wrapper = iter.next();
+                    ParserToken token = wrapper.getToken();
+                    if (token instanceof LexerString) {
+                        String str = ((LexerString) token).getString();
+                        LexerRule fromDict = dictionary.get(str);
+                        if (fromDict != null) {
+                            iter.set(new ParserAlternative.Wrapper(
+                                    fromDict,
+                                    wrapper.getRepeat(),
+                                    wrapper.getCode(),
+                                    wrapper.getArgs(),
+                                    wrapper.getCustomName(),
+                                    wrapper.getCustomOp()
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void flattenLexerAlternatives() {
+        Queue<LexerRule> queue = new ArrayDeque<>(lexerRules.values());
+        while (!queue.isEmpty()) {
+            LexerRule rule = queue.poll();
+            int counter = 0;
+            for (List<LexerAlternative.Wrapper> wrappers : rule.getAlternatives()) {
+                for (ListIterator<LexerAlternative.Wrapper> iter = wrappers.listIterator(); iter.hasNext(); ) {
+                    LexerAlternative.Wrapper wrapper = iter.next();
+                    LexerToken token = wrapper.getToken();
+                    if (token instanceof LexerAlternative) {
+                        String name = "_Flatten" + rule.getName() + String.valueOf(counter++);
+                        LexerRule flattened = new LexerRule(name, true, rule.isSkip(), (LexerAlternative) token);
+                        lexerRules.put(name, flattened);
+                        queue.add(flattened);
+                        iter.set(new LexerAlternative.Wrapper(flattened, wrapper.getRepeat()));
+                    }
                 }
             }
         }
