@@ -10,6 +10,10 @@ public abstract class Token {
         return repeat;
     }
 
+    public String getRepeatOp() {
+        return repeat.operator;
+    }
+
     Token setRepeat(Repeat repeat) {
         this.repeat = repeat;
         return this;

@@ -26,12 +26,13 @@ public class LexerAlternative extends Token {
                     if (token == null) {
                         throw new AssertionError("Unknown lexer rule \"" + name + "\"");
                     }
+                    // TODO Fragments
                 } else if (tokenContext.string != null) {
                     String str = tokenContext.string.getText();
                     token = new LexerString(str);
-                } else if (tokenContext.regexp != null) {
-                    String pattern = tokenContext.regexp.getText();
-                    token = new LexerRegExp(pattern);
+                } else if (tokenContext.charset != null) {
+                    String charset = tokenContext.charset.getText();
+                    token = new LexerCharSet(charset, tokenContext.inverse != null);
                 } else if (tokenContext.alternative != null) {
                     token = new LexerAlternative(tokenContext.alternative, grammar);
                 } else {
@@ -57,11 +58,11 @@ public class LexerAlternative extends Token {
     public String toString() {
         Function<List<Token>, String> seqToString = list -> list.stream().map(token -> {
             if (token instanceof LexerRule) {
-                return ((LexerRule) token).getName();
+                return ((LexerRule) token).getName() + token.getRepeatOp();
             } else if (token instanceof LexerAlternative) {
-                return "(" + token.toString() + ")";
+                return "(" + token.toString() + ")" + token.getRepeatOp();
             } else {
-                return token.toString();
+                return token.toString() + token.getRepeatOp();
             }
         }).collect(Collectors.joining(" "));
 

@@ -21,7 +21,7 @@ parserAlternative
     ;
 
 parserSequence
-    : (parts+=parserSequencePart)+
+    : (parts+=parserSequencePart)*
     ;
 
 parserSequencePart
@@ -61,16 +61,10 @@ lexerSequencePart
 lexerRuleToken
     : lexerRuleName=LexerRuleName
     | string=SingleQuoteString
-    | regexp=RegExpBlock
+    | (inverse='~')? charset=BracketsBlock
     | '(' alternative=lexerAlternative ')'
     ;
 
-
-
-RegExpBlock: RegExp '(' DoubleQuoteString ')' {
-    String text = getText();
-    setText(text.substring(7, text.length() - 1));
-};
 
 BracesBlock: '{' (~['"{}] | SingleQuoteString | DoubleQuoteString | BracesBlock)* '}' {
     String text = getText();
@@ -88,7 +82,7 @@ At: '@';
 Fragment: 'fragment';
 Arrow: '->';
 Skip: 'skip';
-RegExp: 'RegExp';
+Not: '~';
 
 AssignOperator
     : Assign
