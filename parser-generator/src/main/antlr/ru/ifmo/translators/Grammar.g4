@@ -1,7 +1,7 @@
 grammar Grammar;
 
 grammarFile
-    : 'grammar' name=LexerRuleName
+    : 'grammar' name=LexerRuleName ';'
       ('@' 'header' header=BracesBlock)?
       ('@' 'members' members=BracesBlock)?
       (parserRules+=grammarParserRule | lexerRules+=grammarLexerRule)+
@@ -106,6 +106,7 @@ DoubleQuoteString: '"' (~["] | '\\"')* '"' {
     String text = getText();
     setText(text.substring(1, text.length() - 1));
 };
+
 RuleOperator: [?+*];
 LexerRuleName: UppercaseLetter Char*;
 ParserRuleName: LowercaseLetter Char*;
