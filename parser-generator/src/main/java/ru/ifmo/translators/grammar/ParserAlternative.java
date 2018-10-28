@@ -4,62 +4,61 @@ import ru.ifmo.translators.GrammarParser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class ParserAlternative extends Token implements ParserToken {
+public class ParserAlternative extends Token {
 
-    private final List<List<ParserToken>> alternatives = new ArrayList<>();
+    private final List<List<Token>> alternatives = new ArrayList<>();
 
     public ParserAlternative(GrammarParser.ParserAlternativeContext alternative, Grammar grammar) {
-        Map<String, LexerRule> lexerRules = grammar.lexerRules;
-        Map<String, ParserRule> parserRules = grammar.parserRules;
-
         for (GrammarParser.ParserSequenceContext sequence : alternative.sequences) {
-            List<ParserToken> tokens = new ArrayList<>();
+            List<Token> tokens = new ArrayList<>();
+
             for (GrammarParser.ParserSequencePartContext part : sequence.parts) {
-                ParserToken token = null;
+                GrammarParser.ParserRuleTokenContext tokenContext = part.token;
 
-                org.antlr.v4.runtime.Token lexerRuleName = part.token.lexerRuleName;
-                org.antlr.v4.runtime.Token parserRuleName = part.token.parserRuleName;
+                Token token;
 
-                // TODO: Inherited arguments !!!
-
-                org.antlr.v4.runtime.Token stringText = part.token.string;
-                GrammarParser.ParserAlternativeContext alt = part.token.alternative;
-                if (lexerRuleName != null) {
-                    token = lexerRules.get(lexerRuleName.getText());
+                if (tokenContext.lexerRuleName != null) {
+                    String name = tokenContext.lexerRuleName.getText();
+                    token = grammar.lexerRules.get(name);
                     if (token == null) {
-                        throw new AssertionError("No token with name \"" + lexerRuleName.getText() + "\"");
+                        throw new AssertionError("Unknown lexer rule \"" + name + "\"");
                     }
-                } else if (parserRuleName != null) {
-                    token = parserRules.get(parserRuleName.getText());
+                } else if (tokenContext.parserRuleName != null) {
+                    String name = tokenContext.parserRuleName.getText();
+                    token = grammar.parserRules.get(name);
                     if (token == null) {
-                        throw new AssertionError("No token with name \"" + parserRuleName.getText() + "\"");
+                        throw new AssertionError("Unknown parser rule \"" + name + "\"");
                     }
-                } else if (stringText != null) {
-                    token = grammar.dictionary.get(stringText.getText());
+                    if (tokenContext.args != null) {
+                        String args = tokenContext.args.getText();
+                        token = new ParserRuleApplication((ParserRule) token, args);
+                    }
+                } else if (tokenContext.string != null) {
+                    String str = tokenContext.string.getText();
+                    token = grammar.dictionary.get(str);
                     if (token == null) {
-                        throw new AssertionError("No token for string literal \"" + stringText.getText() + "\"");
+                        System.err.println("Implicit token created for string literal \"" + str + "\"");
+                        token = new LexerString(str);
+                        grammar.dictionary.put(str, token);
                     }
-                } else if (alt.sequences != null) {
-                    token = new ParserAlternative(alt, grammar);
+                } else if (tokenContext.alternative != null) {
+                    token = new ParserAlternative(tokenContext.alternative, grammar);
                 } else {
-                    throw new AssertionError("Unknown token type in lexer");
+                    throw new AssertionError("Unknown token type in parser");
                 }
-                org.antlr.v4.runtime.Token repeatText = part.repeat;
-                Repeat repeat = repeatText == null ? Repeat.ONCE : Repeat.get(repeatText.getText());
-                org.antlr.v4.runtime.Token customName = part.customName;
-                String customNameText = customName == null ? "" : customName.getText();
-                org.antlr.v4.runtime.Token customOp = part.customOp;
-                String customOpText = customOp == null ? "" : customOp.getText();
-                org.antlr.v4.runtime.Token code = part.code;
-                String codeText = code == null ? "" : code.getText();
 
-                ((ru.ifmo.translators.grammar.Token) token)
-                        .setRepeat(repeat)
-                        .setCustomName(customNameText)
-                        .setCustomOp(customOpText)
-                        .setCode(codeText);
+                Repeat repeat = part.repeat == null ? Repeat.ONCE : Repeat.get(part.repeat.getText());
+                String customNameText = part.customName == null ? "" : part.customName.getText();
+                String customOpText = part.customOp == null ? "" : part.customOp.getText();
+                String codeText = part.code == null ? "" : part.code.getText();
+
+                token.setRepeat(repeat);
+                token.setCustomName(customNameText);
+                token.setCustomOp(customOpText);
+                token.setCode(codeText);
 
                 tokens.add(token);
             }
@@ -67,7 +66,24 @@ public class ParserAlternative extends Token implements ParserToken {
         }
     }
 
-    public List<List<ParserToken>> getAlternatives() {
+    public List<List<Token>> getAlternatives() {
         return alternatives;
+    }
+
+    @Override
+    public String toString() {
+        Function<List<Token>, String> seqToString = list -> list.stream().map(token -> {
+            if (token instanceof LexerRule) {
+                return ((LexerRule) token).getName();
+            } else if (token instanceof ParserRule) {
+                return ((ParserRule) token).getName();
+            } else if (token instanceof ParserAlternative) {
+                return "(" + token.toString() + ")";
+            } else {
+                return token.toString();
+            }
+        }).collect(Collectors.joining(" "));
+
+        return alternatives.stream().map(seqToString).collect(Collectors.joining(" | "));
     }
 }

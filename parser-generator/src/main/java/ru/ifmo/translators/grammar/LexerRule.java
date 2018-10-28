@@ -2,22 +2,24 @@ package ru.ifmo.translators.grammar;
 
 import ru.ifmo.translators.GrammarParser;
 
-import java.util.StringJoiner;
+import java.util.List;
 
-public class LexerRule extends Token implements LexerToken, ParserToken {
-
-    private final GrammarParser.GrammarLexerRuleContext rule;
+public class LexerRule extends Token {
 
     private final boolean isFragment, isSkip;
     private final String name;
+
+    private final GrammarParser.LexerAlternativeContext alternativeContext;
+
     private LexerAlternative alternative;
 
     public LexerRule(GrammarParser.GrammarLexerRuleContext rule) {
-        this.rule = rule;
         isFragment = rule.isFragment != null;
-        name = rule.name.getText();
-        alternative = null;
         isSkip = rule.isSkip != null;
+        name = rule.name.getText();
+
+        alternativeContext = rule.alternative;
+        alternative = null;
     }
 
     public boolean isFragment() {
@@ -36,16 +38,17 @@ public class LexerRule extends Token implements LexerToken, ParserToken {
         return alternative;
     }
 
+    public List<List<Token>> getAlternatives() {
+        return alternative.getAlternatives();
+    }
+
     public void bind(Grammar grammar) {
-        alternative = new LexerAlternative(rule.alternative, grammar);
+        alternative = new LexerAlternative(alternativeContext, grammar);
     }
 
     @Override
     public String toString() {
-        return new StringJoiner("\n")
-                .add(isFragment ? "fragment" : "")
-                .add(name + ":")
-                .add(alternative.toString() + (isSkip ? " -> skip" : ""))
-                .toString();
+        return ((isFragment ? "fragment\n" : "") + name + ": ") +
+                alternative.toString() + (isSkip ? " -> skip" : "") + ";";
     }
 }

@@ -2,21 +2,24 @@ package ru.ifmo.translators.grammar;
 
 import ru.ifmo.translators.GrammarParser;
 
-import java.util.StringJoiner;
+import java.util.List;
 
-public class ParserRule extends Token implements ParserToken {
+public class ParserRule extends Token {
 
-    private final GrammarParser.GrammarParserRuleContext rule;
     private final String name, args, ret, initCode, afterCode;
+
+    private final GrammarParser.ParserAlternativeContext alternativeContext;
+
     private ParserAlternative alternative;
 
     public ParserRule(GrammarParser.GrammarParserRuleContext rule) {
-        this.rule = rule;
         name = rule.name.getText();
         args = rule.args == null ? "" : rule.args.getText();
         ret = rule.ret == null ? "" : rule.ret.getText();
         initCode = rule.init == null ? "" : rule.init.getText();
         afterCode = rule.after == null ? "" : rule.after.getText();
+
+        alternativeContext = rule.alternative;
         alternative = null;
     }
 
@@ -44,19 +47,21 @@ public class ParserRule extends Token implements ParserToken {
         return alternative;
     }
 
+    public List<List<Token>> getAlternatives() {
+        return alternative.getAlternatives();
+    }
+
     public void bind(Grammar grammar) {
-        alternative = new ParserAlternative(rule.alternative, grammar);
+        alternative = new ParserAlternative(alternativeContext, grammar);
     }
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", ParserRule.class.getSimpleName() + "[", "]")
-                .add("name='" + name + "'")
-                .add("args='" + args + "'")
-                .add("ret='" + ret + "'")
-                .add("initCode='" + initCode + "'")
-                .add("afterCode='" + afterCode + "'")
-                .add("alternative=" + alternative)
-                .toString();
+        return name
+                + (args.equals("") ? "" : "[" + args + "]")
+                + (ret.equals("") ? "" : " returns [" + ret + "]")
+                + (initCode.equals("") ? "" : "\n@init {\n" + initCode + "\n}\n")
+                + (afterCode.equals("") ? "" : "\n@init {\n" + afterCode + "\n}\n")
+                + ": " + alternative.toString() + ";";
     }
 }

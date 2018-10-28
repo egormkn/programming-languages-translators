@@ -2,7 +2,7 @@ package ru.ifmo.translators.grammar;
 
 import java.util.regex.Pattern;
 
-public class LexerRegExp extends Token implements LexerToken {
+public class LexerRegExp extends Token {
 
     private final Pattern pattern;
 
@@ -12,5 +12,10 @@ public class LexerRegExp extends Token implements LexerToken {
 
     public Pattern getPattern() {
         return pattern;
+    }
+
+    @Override
+    public String toString() {
+        return "RegExp(" + pattern.pattern() + ")";
     }
 }

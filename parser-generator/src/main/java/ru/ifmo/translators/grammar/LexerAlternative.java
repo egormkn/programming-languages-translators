@@ -4,57 +4,67 @@ import ru.ifmo.translators.GrammarParser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class LexerAlternative extends Token implements LexerToken {
+public class LexerAlternative extends Token {
 
-    private final List<List<LexerToken>> alternatives = new ArrayList<>();
+    private final List<List<Token>> alternatives = new ArrayList<>();
 
     public LexerAlternative(GrammarParser.LexerAlternativeContext alternative, Grammar grammar) {
-        Map<String, LexerRule> lexerRules = grammar.lexerRules;
-
         for (GrammarParser.LexerSequenceContext sequence : alternative.sequences) {
-            List<LexerToken> tokens = new ArrayList<>();
+            List<Token> tokens = new ArrayList<>();
+
             for (GrammarParser.LexerSequencePartContext part : sequence.parts) {
-                org.antlr.v4.runtime.Token repeatText = part.repeat;
-                Repeat repeat = repeatText == null ? Repeat.ONCE : Repeat.get(repeatText.getText());
+                GrammarParser.LexerRuleTokenContext tokenContext = part.token;
 
-                LexerToken token;
+                Token token;
 
-                org.antlr.v4.runtime.Token lexerRuleName = part.token.lexerRuleName;
-                org.antlr.v4.runtime.Token stringText = part.token.string;
-                org.antlr.v4.runtime.Token regexp = part.token.regexp;
-                GrammarParser.LexerAlternativeContext alt = part.token.alternative;
-                if (lexerRuleName != null) {
-                    token = lexerRules.get(lexerRuleName.getText());
+                if (tokenContext.lexerRuleName != null) {
+                    String name = tokenContext.lexerRuleName.getText();
+                    token = grammar.lexerRules.get(name);
                     if (token == null) {
-                        throw new AssertionError("No token with name \"" + lexerRuleName.getText() + "\"");
+                        throw new AssertionError("Unknown lexer rule \"" + name + "\"");
                     }
-                } else if (stringText != null) {
-                    token = grammar.dictionary.get(stringText.getText());
-                    if (token == null) {
-                        throw new AssertionError("No token for string literal \"" + stringText.getText() + "\"");
-                    }
-                } else if (regexp != null) {
-                    token = new LexerRegExp(regexp.getText());
-                } else if (alt.sequences != null) {
-                    token = new LexerAlternative(alt, grammar);
+                } else if (tokenContext.string != null) {
+                    String str = tokenContext.string.getText();
+                    token = new LexerString(str);
+                } else if (tokenContext.regexp != null) {
+                    String pattern = tokenContext.regexp.getText();
+                    token = new LexerRegExp(pattern);
+                } else if (tokenContext.alternative != null) {
+                    token = new LexerAlternative(tokenContext.alternative, grammar);
                 } else {
                     throw new AssertionError("Unknown token type in lexer");
                 }
-                ((ru.ifmo.translators.grammar.Token) token).setRepeat(repeat);
+
+                Repeat repeat = part.repeat == null
+                        ? Repeat.ONCE
+                        : Repeat.get(part.repeat.getText());
+                token.setRepeat(repeat);
+
                 tokens.add(token);
             }
             alternatives.add(tokens);
         }
     }
 
-    public List<List<LexerToken>> getAlternatives() {
+    public List<List<Token>> getAlternatives() {
         return alternatives;
     }
 
     @Override
     public String toString() {
-        return "str";//alternatives.toString();
+        Function<List<Token>, String> seqToString = list -> list.stream().map(token -> {
+            if (token instanceof LexerRule) {
+                return ((LexerRule) token).getName();
+            } else if (token instanceof LexerAlternative) {
+                return "(" + token.toString() + ")";
+            } else {
+                return token.toString();
+            }
+        }).collect(Collectors.joining(" "));
+
+        return alternatives.stream().map(seqToString).collect(Collectors.joining(" | "));
     }
 }
