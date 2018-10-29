@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RecursiveDescentParserTest {
+
     private static RecursiveDescentParser p;
 
     @BeforeAll
@@ -113,10 +114,12 @@ public class RecursiveDescentParserTest {
     @Test
     public void testPrint() {
         try {
-            InputStream is = new ByteArrayInputStream("(a|b)*".getBytes(StandardCharsets.UTF_8));
+            InputStream is = new ByteArrayInputStream("((abc*b|a)*ab(aa|b*)b)*".getBytes(StandardCharsets.UTF_8));
             Tree t = p.parse(is);
             t.print();
+            Thread.sleep(100000);
         } catch (Exception e) {
+            e.printStackTrace();
             Assertions.fail();
         }
     }
@@ -135,8 +138,8 @@ public class RecursiveDescentParserTest {
             Tree t = p.parse(is);
             return true;
         } catch (Exception e) {
-            System.err.println(e.getMessage() + " in " + s);
-            System.err.flush();
+            // System.err.println(e.getMessage() + " in " + s);
+            // System.err.flush();
             return false;
         }
     }
