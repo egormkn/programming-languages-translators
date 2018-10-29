@@ -26,6 +26,13 @@ public class ParserAlternative implements ParserToken {
                 GrammarParser.ParserTokenContext tokenContext = wrapperContext.token;
 
                 ParserToken token;
+
+                if (tokenContext == null) {
+                    // TODO: Add support for code in parser tokens
+                    System.err.println("Code in parser tokens is not supported yet");
+                    continue;
+                }
+
                 String args = "";
 
                 if (tokenContext.lexerRuleName != null) {

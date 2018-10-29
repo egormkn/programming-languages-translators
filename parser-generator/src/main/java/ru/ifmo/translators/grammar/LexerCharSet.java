@@ -16,7 +16,7 @@ public class LexerCharSet implements LexerToken {
     }
 
     public String getCharset() {
-        return charset;
+        return "[" + (inverse ? "^" : "") + charset + "]";
     }
 
     public boolean isInverse() {

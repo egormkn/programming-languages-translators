@@ -27,6 +27,12 @@ public class LexerAlternative implements LexerToken {
 
                 LexerToken token;
 
+                if (tokenContext == null) {
+                    // TODO: Add support for code in lexer tokens
+                    System.err.println("Code in lexer tokens is not supported yet");
+                    continue;
+                }
+
                 if (tokenContext.lexerRuleName != null) {
                     String name = tokenContext.lexerRuleName.getText();
                     token = grammar.getLexerRules().get(name);

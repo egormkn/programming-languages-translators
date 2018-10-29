@@ -4,6 +4,7 @@ grammarFile
     : 'grammar' name=LexerRuleName ';'
       ('@' 'header' header=BracesBlock)?
       ('@' 'members' members=BracesBlock)?
+      ('@' 'footer' footer=BracesBlock)?
       (parserRules+=grammarParserRule | lexerRules+=grammarLexerRule)+
       EOF
     ;
@@ -27,7 +28,7 @@ parserSequence
 parserTokenWrapper
     : (customName=ParserRuleName customOp=AssignOperator)?
       token=parserToken (repeat=RuleOperator)?
-      (code=BracesBlock)?
+    | code=BracesBlock
     ;
 
 parserToken
@@ -55,7 +56,7 @@ lexerSequence
 
 lexerTokenWrapper
     : token=lexerToken (repeat=RuleOperator)?
-      (code=BracesBlock)?
+    | code=BracesBlock
     ;
 
 lexerToken
