@@ -42,7 +42,7 @@ public class LexerGenerator {
                 "import java.util.regex.Matcher;\n" +
                 "import java.util.regex.Pattern;\n" +
                 "\n" +
-                "@SuppressWarnings(\"WeakerAccess\")\n" +
+                "@SuppressWarnings({\"all\", \"warnings\", \"unchecked\", \"unused\", \"cast\"})\n" +
                 "public class " + grammar.getName() + "Lexer {\n" +
                 "\n" +
                 grammar.getMembers() + "\n" +
