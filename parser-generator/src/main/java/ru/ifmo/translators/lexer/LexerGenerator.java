@@ -240,7 +240,10 @@ public class LexerGenerator {
                 grammar.getLexerRules().values().stream()
                         .map(this::generateToken)
                         .collect(Collectors.joining("\n")) +
-                "}";
+                "}\n" +
+                "\n" +
+                grammar.getFooter() +
+                "\n";
     }
 
     private String generateToken(LexerRule rule) {

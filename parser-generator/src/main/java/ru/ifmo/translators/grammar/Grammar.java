@@ -14,14 +14,17 @@ public class Grammar {
 
     private final LinkedHashMap<String, LexerRule> lexerRules = new LinkedHashMap<>();
     private final LinkedHashMap<String, ParserRule> parserRules = new LinkedHashMap<>();
-    private final String name, header, members;
-
+    private final String name;
+    private final String header;
+    private final String members;
+    private final String footer;
     private final Map<String, LexerRule> dictionary = new HashMap<>();
 
     public Grammar(GrammarParser.GrammarFileContext grammarFile) {
         this.name = grammarFile.name.getText();
         this.header = grammarFile.header == null ? "" : grammarFile.header.getText();
         this.members = grammarFile.members == null ? "" : grammarFile.members.getText();
+        this.footer = grammarFile.footer == null ? "" : grammarFile.footer.getText();
 
         for (GrammarParser.GrammarLexerRuleContext rule : grammarFile.lexerRules) {
             LexerRule lexerRule = new LexerRule(rule);
@@ -130,6 +133,10 @@ public class Grammar {
 
     public String getMembers() {
         return members;
+    }
+
+    public String getFooter() {
+        return footer;
     }
 
     public Map<String, LexerRule> getLexerRules() {
