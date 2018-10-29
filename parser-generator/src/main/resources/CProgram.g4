@@ -1,9 +1,9 @@
-// https://en.wikipedia.org/wiki/Statement_(computer_science)
-
-// https://github.com/antlr/antlr4/blob/master/doc/parser-rules.md#rule-attribute-definitions
-// https://github.com/Shemplo/Study-courses/blob/master/Translation%20methods/3.%20Translator/grammar/pascal.g4
+grammar CProgram;
 
 @header {
+package ru.ifmo.translators.generated;
+
+import java.util.*;
 }
 
 @members {
@@ -30,11 +30,77 @@
     static String nullable(String pref, String given, String suff, String def) {
         return given != null ? (pref + given + suff) : def;
     }
+
+    static class FilteredStringJoiner {
+        private final String prefix;
+        private final String delimiter;
+        private final String suffix;
+
+        private StringBuilder value;
+
+        private String emptyValue;
+
+
+        public FilteredStringJoiner(CharSequence delimiter) {
+            this(delimiter, "", "");
+        }
+
+        public FilteredStringJoiner(CharSequence delimiter,
+                                    CharSequence prefix,
+                                    CharSequence suffix) {
+            Objects.requireNonNull(prefix, "The prefix must not be null");
+            Objects.requireNonNull(delimiter, "The delimiter must not be null");
+            Objects.requireNonNull(suffix, "The suffix must not be null");
+            // make defensive copies of arguments
+            this.prefix = prefix.toString();
+            this.delimiter = delimiter.toString();
+            this.suffix = suffix.toString();
+            this.emptyValue = this.prefix + this.suffix;
+        }
+
+        @Override
+        public String toString() {
+            if (value == null) {
+                return emptyValue;
+            } else {
+                if (suffix.equals("")) {
+                    return value.toString();
+                } else {
+                    int initialLength = value.length();
+                    String result = value.append(suffix).toString();
+                    // reset value to pre-append initialLength
+                    value.setLength(initialLength);
+                    return result;
+                }
+            }
+        }
+
+        public FilteredStringJoiner add(CharSequence newElement) {
+            if (newElement.length() > 0) prepareBuilder().append(newElement);
+            return this;
+        }
+
+        private StringBuilder prepareBuilder() {
+            if (value != null) {
+                value.append(delimiter);
+            } else {
+                value = new StringBuilder().append(prefix);
+            }
+            return value;
+        }
+
+        public int length() {
+            return (value != null ? value.length() + suffix.length() :
+                    emptyValue.length());
+        }
+    }
 }
+
+
 
 program // OK
     returns [String code]
-    : (units+=unit)* EOF
+    : (units+=unit)* // EOF
         {
             $code = stringify($units, u -> u.code, "\n\n");
             System.out.println($code);
@@ -559,39 +625,19 @@ jumpStatement // OK
 
 
 
+StringLiteral
+    : EncodingPrefix? '"' SChar* '"'
+    ;
 
-StructOrUnion
-    : Struct
-    | Union
+Constant
+    : IntegerConstant
+    | FloatingConstant
+    //| EnumerationConstant
+    | CharacterConstant
     ;
 
 DirectiveToken
-    : '#' Whitespace* RegExp("[a-z]+") Whitespace RegExp(".*?") RegExp("~[ \\]") Whitespace* Newline
-    ;
-
-StorageClassSpecifier
-    : Typedef
-    | Extern
-    | Static
-    | Auto
-    | Register
-    ;
-
-BasicTypeSpecifier
-    : Void
-    | Char
-    | Short
-    | Int
-    | Long
-    | Float
-    | Double
-    | Signed
-    | Unsigned
-    ;
-
-TypeQualifier
-    : Const
-    | Volatile
+    : '#' Whitespace* [a-z]+ ~[\n]* Newline
     ;
 
 Auto: 'auto';
@@ -690,6 +736,37 @@ Identifier
     : IdentifierNondigit (IdentifierNondigit | Digit)*
     ;
 
+
+StructOrUnion
+    : Struct
+    | Union
+    ;
+
+StorageClassSpecifier
+    : Typedef
+    | Extern
+    | Static
+    | Auto
+    | Register
+    ;
+
+BasicTypeSpecifier
+    : Void
+    | Char
+    | Short
+    | Int
+    | Long
+    | Float
+    | Double
+    | Signed
+    | Unsigned
+    ;
+
+TypeQualifier
+    : Const
+    | Volatile
+    ;
+
 fragment
 IdentifierNondigit
     : Nondigit
@@ -715,13 +792,6 @@ UniversalCharacterName
 fragment
 HexQuad
     : HexadecimalDigit HexadecimalDigit HexadecimalDigit HexadecimalDigit
-    ;
-
-Constant
-    : IntegerConstant
-    | FloatingConstant
-    //| EnumerationConstant
-    | CharacterConstant
     ;
 
 fragment
@@ -870,7 +940,7 @@ EscapeSequence
 
 fragment
 SimpleEscapeSequence
-    : '\\' ['"?abfnrtv\\]
+    : '\\' ['"?abfnrtv0\\]
     ;
 
 fragment
@@ -883,10 +953,6 @@ OctalEscapeSequence
 fragment
 HexadecimalEscapeSequence
     : '\\x' HexadecimalDigit+
-    ;
-
-StringLiteral
-    : EncodingPrefix? '"' SChar* '"'
     ;
 
 fragment
@@ -915,7 +981,7 @@ Newline
     ;
 
 BlockComment
-    : '/*' .*? '*/' -> skip
+    : '/*' ~[*]* '*/' -> skip
     ;
 
 LineComment
