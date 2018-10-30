@@ -1,14 +1,20 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
 
-#define AAA   \
-        "BBB"
+//#define AAA   \
+//        "BBB"
 
 int hdhsjs = 0;
 
 int main(int argc, char **argv)
 {
+	switch (a) {
+	    case a:
+	        break;
+	    default:
+	        break;
+	}
 	int n = 0, x1 = 1, y1, x2, y2;
 	scanf("%d", &n);
 	int **A = (int**) malloc(n * sizeof(int*));
