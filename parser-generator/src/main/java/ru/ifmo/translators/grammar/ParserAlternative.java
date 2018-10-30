@@ -19,7 +19,7 @@ public class ParserAlternative implements ParserToken {
             List<Wrapper> wrappers = new LinkedList<>();
 
             if (sequenceContext.wrappers.size() == 0) {
-                wrappers.add(new Wrapper(LexerString.EMPTY, Repeat.ONCE, ""));
+                wrappers.add(new Wrapper(LexerRule.EMPTY, Repeat.ONCE, ""));
             }
 
             for (GrammarParser.ParserTokenWrapperContext wrapperContext : sequenceContext.wrappers) {

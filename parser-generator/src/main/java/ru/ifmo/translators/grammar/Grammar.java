@@ -32,6 +32,8 @@ public class Grammar {
         }
         lexerRules.forEach((String key, LexerRule rule) -> rule.bind(this));
 
+        lexerRules.put("", LexerRule.EMPTY);
+
         flattenLexerAlternatives();
 
         for (GrammarParser.GrammarParserRuleContext rule : grammarFile.parserRules) {

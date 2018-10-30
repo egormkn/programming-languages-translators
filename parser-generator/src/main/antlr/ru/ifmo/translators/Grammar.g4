@@ -94,7 +94,7 @@ AssignOperator
 Assign: '=';
 AddAssign: '+=';
 
-SingleQuoteString: '\'' (~[\\'] | [\\] . )* '\'' {
+SingleQuoteString: '\'' (~[\\'] | [\\] . )+ '\'' {
     String text = getText();
     setText(text.substring(1, text.length() - 1));
 };

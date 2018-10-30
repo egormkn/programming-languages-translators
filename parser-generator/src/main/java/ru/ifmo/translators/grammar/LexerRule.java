@@ -6,6 +6,8 @@ import java.util.List;
 
 public class LexerRule implements LexerToken, ParserToken {
 
+    static final LexerRule EMPTY = new LexerRule("_EPS", true, true, LexerAlternative.EMPTY);
+
     private final boolean isFragment, isSkip;
     private final String name;
 

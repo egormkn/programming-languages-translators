@@ -3,12 +3,16 @@ package ru.ifmo.translators.grammar;
 import ru.ifmo.translators.GrammarParser;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class LexerAlternative implements LexerToken {
+
+    static final LexerAlternative EMPTY =
+            new LexerAlternative(Collections.singletonList(Collections.singletonList(new Wrapper(LexerString.EMPTY, Repeat.ONCE))));
 
     private final List<List<Wrapper>> alternatives;
 
@@ -19,7 +23,7 @@ public class LexerAlternative implements LexerToken {
             List<Wrapper> wrappers = new LinkedList<>();
 
             if (sequenceContext.wrappers.size() == 0) {
-                wrappers.add(new Wrapper(LexerString.EMPTY, Repeat.ONCE));
+                wrappers.add(new Wrapper(LexerRule.EMPTY, Repeat.ONCE));
             }
 
             for (GrammarParser.LexerTokenWrapperContext wrapperContext : sequenceContext.wrappers) {
@@ -59,6 +63,10 @@ public class LexerAlternative implements LexerToken {
             }
             alternatives.add(wrappers);
         }
+    }
+
+    public LexerAlternative(List<List<Wrapper>> alternatives) {
+        this.alternatives = alternatives;
     }
 
     public List<List<Wrapper>> getAlternatives() {
