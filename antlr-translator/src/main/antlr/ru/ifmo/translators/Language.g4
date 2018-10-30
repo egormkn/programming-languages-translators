@@ -1,13 +1,5 @@
 grammar Language;
 
-// https://en.wikipedia.org/wiki/Statement_(computer_science)
-
-// https://github.com/antlr/antlr4/blob/master/doc/parser-rules.md#rule-attribute-definitions
-// https://github.com/Shemplo/Study-courses/blob/master/Translation%20methods/3.%20Translator/grammar/pascal.g4
-
-@header {
-}
-
 @members {
     static <T> String stringify(java.util.List<T> list, java.util.function.Function<? super T, String> fn, String delim) {
         return list.stream().map(fn).collect(java.util.stream.Collectors.joining(delim));
@@ -36,11 +28,11 @@ grammar Language;
 
 program // OK
     returns [String code]
-    : (units+=unit)* EOF
-        {
-            $code = stringify($units, u -> u.code, "\n\n");
-            System.out.println($code);
-        }
+    @after {
+        System.out.println($code);
+    }
+    : unit* EOF
+        {$code = stringify($ctx.unit(), u -> u.code, "\n\n");}
     ;
 
 unit // OK
@@ -52,6 +44,7 @@ unit // OK
     | directive
         {$code = $directive.code;}
     | ';' // stray ';' character
+        {$code = "";}
     ;
 
 function // OK
@@ -72,7 +65,7 @@ declaration
     : (specifiers+=declarationSpecifier)+ initDeclaratorList?
         {
             $code = stringify($specifiers, s -> s.code, " ")
-                    + " " + $initDeclaratorList.code;
+            + nullable(" ", $initDeclaratorList.code, "", "");
         }
     ;
 
@@ -179,7 +172,7 @@ item // OK
 
 
 
-
+test: Constant;
 
 primaryExpression
     returns [String code]
@@ -299,7 +292,7 @@ conditionalExpression
 assignmentExpression
     returns [String code]
     : conditionalExpression
-        {$code = $conditionalExpression.text;}
+        {$code = $conditionalExpression.code;}
     | unaryExpression assignmentOperator assignmentExpression
         {$code = $unaryExpression.text + $assignmentOperator.text + $assignmentExpression.text;}
     | DigitSequence // for
@@ -422,28 +415,33 @@ directAbstractDeclarator
     ;
 
 initializer
-    :   assignmentExpression
-    |   '{' initializerList '}'
-    |   '{' initializerList ',' '}'
+    : assignmentExpression
+    | '{' initializerList '}'
+    | '{' initializerList ',' '}'
     ;
 
 initializerList
-    :   designation? initializer
-    |   initializerList ',' designation? initializer
+    :   designation? initializer (',' designation? initializer)*
     ;
 
 designation
-    :   designatorList '='
+    returns [String code]
+    : designatorList '='
+        {$code = $designatorList.code + " = ";}
     ;
 
 designatorList
-    :   designator
-    |   designatorList designator
+    returns [String code]
+    : (designators+=designator)+
+        {$code = stringify($designators, d -> d.code, " ");}
     ;
 
 designator
-    :   '[' constantExpression ']'
-    |   '.' Identifier
+    returns [String code]
+    : '[' constantExpression ']'
+        {$code = "[" + $constantExpression.code + "]";}
+    | '.' Identifier
+        {$code = "." + $Identifier.text;}
     ;
 
 statement // OK
@@ -462,7 +460,7 @@ statement // OK
         {$code = $jumpStatement.code;}
     ;
 
-labeledStatement
+labeledStatement // OK
     returns [String code]
     : 'case' constantExpression ':' statement
         {$code = "case " + $constantExpression.code + ": " + $statement.code;}
@@ -502,16 +500,16 @@ forCondition // OK
 	    {
 	        $code = joiner("; ")
                     .add($for1d.code)
-                    .add(nullable($for2.code, ""))
-                    .add(nullable($for3.code, ""))
+                    .add(nullable($for2.code, " "))
+                    .add(nullable($for3.code, " "))
                     .toString();
 	    }
 	| for1e=expression? ';' for2=expression? ';' for3=expression?
 	    {
 	        $code = joiner("; ")
-                    .add(nullable($for1e.code, ""))
-                    .add(nullable($for2.code, ""))
-                    .add(nullable($for3.code, ""))
+                    .add(nullable($for1e.code, " "))
+                    .add(nullable($for2.code, " "))
+                    .add(nullable($for3.code, " "))
                     .toString();
 	    }
 	;
