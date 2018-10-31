@@ -1,122 +1,382 @@
 grammar GoodLanguage;
 
+@header {
+import java.util.Arrays;
+import java.util.List;
+import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+}
+
 @members {
     static <T> String stringify(java.util.List<T> list, java.util.function.Function<? super T, String> fn, String delim) {
         return list.stream().map(fn).collect(java.util.stream.Collectors.joining(delim));
     }
+
+    public static String initTuple(String tuple, String type, String assignment) {
+        StringBuilder code = new StringBuilder();
+        List<String> vars = Arrays.asList(tuple.substring(1, tuple.length() - 1).split("\\s*,\\s*"));
+        vars.stream().map(v -> type + " " + v + ";\n").forEach(code::append);
+        if (assignment.indexOf("%SCANF%") > -1) {
+            code.append(assignment.replace("%SCANF%", vars.stream().map(v -> "&" + v).collect(Collectors.joining(", "))));
+        } else if (assignment.indexOf("%PRINTF%") > -1) {
+            code.append(assignment.replace("%PRINTF%", vars.stream().collect(Collectors.joining(", "))));
+        } else {
+            String updateCode = updateTuple(tuple, type, assignment);
+            code.append(updateCode.substring(2, updateCode.length() - 3));
+        }
+        return code.toString();
+    }
+
+    public static String updateTuple(String tuple, String type, String assignment) {
+        StringBuilder code = new StringBuilder();
+        List<String> vars = Arrays.asList(tuple.substring(1, tuple.length() - 1).split("\\s*,\\s*"));
+        if (assignment.indexOf("%SCANF%") > -1) {
+            code.append(assignment.replace("%SCANF%", vars.stream().map(v -> "&" + v).collect(Collectors.joining(", "))));
+        } else if (assignment.indexOf("%PRINTF%") > -1) {
+            code.append(assignment.replace("%PRINTF%", vars.stream().collect(Collectors.joining(", "))));
+        } else {
+            List<String> assignments = Arrays.asList(assignment.substring(1, tuple.length() - 1).split("\\s*,\\s*"));
+            if (vars.size() != assignments.size()) {
+                throw new AssertionError("Wrong tuple syntax: " + tuple + " " + assignment);
+            }
+            for (int i = 0; i < vars.size(); i++) {
+                code.append(type + " __TEMP" + vars.get(i) + " = " + assignments.get(i) + ";\n");
+            }
+            for (int i = 0; i < vars.size(); i++) {
+                code.append(vars.get(i) + " = __TEMP" + vars.get(i) + ";\n");
+            }
+        }
+        return "{\n" + code.toString() + "\n}\n";
+    }
 }
 
 program // OK
+    returns [String code]
+    @after {
+        $ctx.code = stringify($ctx.unit(), u -> u.code, "\n\n");
+    }
     : Newline* unit*
     ;
 
 unit // OK
-    : declaration Newline*
+    returns [String code]
+    @after {
+        if ($ctx.declaration() != null) {
+            $ctx.code = $ctx.declaration().code;
+        } else if ($ctx.function() != null) {
+            $ctx.code = $ctx.function().code;
+        } else if ($ctx.Directive() != null) {
+            $ctx.code = $ctx.Directive().getText();
+        }
+    }
+    : declaration Newline+
     | function Newline*
     | Directive Newline*
     ;
 
 declaration // OK
-    : 'var' 'const'? lvalue ':' type '=' initializer Newline
+    returns [String code]
+    @after {
+        $ctx.code = "";
+        if ($ctx.lvalue().tuple() != null && $ctx.initializer().tupleAssignment() != null) {
+            $ctx.code += initTuple($ctx.lvalue().tuple().code, $ctx.type().code, $ctx.initializer().tupleAssignment().code);
+        } else if ($ctx.lvalue().tuple() != null || $ctx.initializer().tupleAssignment() != null) {
+            throw new AssertionError("Wrong tuple usage");
+        } else if ($ctx.lvalue().Identifier() != null) {
+            if ($ctx.Const() != null) {
+                $ctx.code += "const ";
+            }
+            $ctx.code += $ctx.type().code + " " + $ctx.lvalue().Identifier().getText() + " = " + $ctx.initializer().code + ";\n";
+        }
+    }
+    : 'var' Const? lvalue ':' type '=' initializer
     ;
 
 function // OK
+    returns [String code]
+    @after {
+        $ctx.code = $ctx.type().code + " " + $ctx.Identifier().getText() + "(";
+        if ($ctx.arguments() != null) {
+            $ctx.code += $ctx.arguments().code;
+        }
+        $ctx.code += ") " + $ctx.compoundStatement().code;
+    }
     : 'function' Identifier '(' arguments? ')' ':' type compoundStatement
     ;
 
 type // OK
-    : 'void' Star*
-    | 'char' Star*
-    | 'short' Star*
-    | 'int' Star*
-    | 'long' Star*
-    | 'float' Star*
-    | 'double' Star*
-    | 'signed' Star*
-    | 'unsigned' Star*
-    | 'string' Star*
+    returns [String code]
+    @after {
+        if ($ctx.Void() != null) {
+            $ctx.code = $ctx.Void().getText();
+        }
+        if ($ctx.Char() != null) {
+            $ctx.code = $ctx.Char().getText();
+        }
+        if ($ctx.Short() != null) {
+            $ctx.code = $ctx.Short().getText();
+        }
+        if ($ctx.Int() != null) {
+            $ctx.code = $ctx.Int().getText();
+        }
+        if ($ctx.Long() != null) {
+            $ctx.code = $ctx.Long().getText();
+        }
+        if ($ctx.Float() != null) {
+            $ctx.code = $ctx.Float().getText();
+        }
+        if ($ctx.Double() != null) {
+            $ctx.code = $ctx.Double().getText();
+        }
+        if ($ctx.Signed() != null) {
+            $ctx.code = $ctx.Signed().getText();
+        }
+        if ($ctx.Unsigned() != null) {
+            $ctx.code = $ctx.Unsigned().getText();
+        }
+        if ($ctx.String() != null) {
+            $ctx.code = "char*";
+        }
+        $ctx.code += stringify($ctx.Star(), s -> s.getText(), "");
+    }
+    : Void Star*
+    | Char Star*
+    | Short Star*
+    | Int Star*
+    | Long Star*
+    | Float Star*
+    | Double Star*
+    | Signed Star*
+    | Unsigned Star*
+    | String Star*
     ;
 
-initializer
-    : assignmentExpression
+initializer // OK
+    returns [String code]
+    @after {
+        if ($ctx.assignmentExpression() != null) {
+            $ctx.code = $ctx.assignmentExpression().code;
+        } else if ($ctx.initializer() != null) {
+            $ctx.code = "{" + $ctx.initializer().code + stringify($ctx.initializerCont(), i -> i.code, "") + "}";
+        }
+    }
+    : tupleAssignment
     | '{' initializer initializerCont* '}'
-    | tupleAssignment
+    | assignmentExpression
     ;
 
-initializerCont
+initializerCont // OK
+    returns [String code]
+    @after {
+        $ctx.code = ", " + $ctx.initializer().code;
+    }
     : ',' initializer
     ;
 
-arguments
+arguments // OK
+    returns [String code]
+    @after {
+        $ctx.code = $ctx.argument().code + stringify($ctx.argumentCont(), a -> a.code, "");
+    }
     : argument argumentCont*
     ;
 
-argumentCont
+argumentCont // OK
+    returns [String code]
+    @after {
+        $ctx.code = ", " + $ctx.argument().code;
+    }
     : ',' argument
     ;
 
 argument // OK
+    returns [String code]
+    @after {
+        $ctx.code = $ctx.type().code + " " + $ctx.Identifier().getText();
+    }
     : type Identifier
     ;
 
 lvalue // OK
+    returns [String code]
+    @after {
+        if ($ctx.tuple() != null) {
+            $ctx.code = $ctx.tuple().code;
+        } else {
+            $ctx.code = $ctx.Identifier().getText();
+        }
+    }
     : tuple
     | Identifier
     ;
 
 tuple // OK
-    : '[' Identifier+ ']'
+    returns [String code]
+    @after {
+        $ctx.code = "[" + $ctx.assignmentExpression().code + stringify($ctx.tupleCont(), i -> i.code, "") + "]";
+    }
+    : '[' assignmentExpression tupleCont* ']'
+    ;
+
+tupleCont // OK
+    returns [String code]
+    @after {
+        $ctx.code = ", " + $ctx.assignmentExpression().code;
+    }
+    : ',' assignmentExpression
     ;
 
 compoundStatement // OK
+    returns [String code]
+    @after {
+        $ctx.code = "{\n" + stringify($ctx.item(), i -> i.code, "\n") + "\n}\n";
+    }
     : '{' item* '}'
     ;
 
 item // OK
-    : statement Newline*
-    | declaration Newline*
+    returns [String code]
+    @after {
+        if ($ctx.statement() != null) {
+            $ctx.code = $ctx.statement().code;
+        } else if ($ctx.declaration() != null) {
+            $ctx.code = $ctx.declaration().code;
+        }
+    }
+    : declaration Newline+
+    | statement Newline*
     ;
 
-statement
+statement // OK
+    returns [String code]
+    @after {
+        if ($ctx.labeledStatement() != null) {
+            $ctx.code = $ctx.labeledStatement().code;
+        } else if ($ctx.compoundStatement() != null) {
+            $ctx.code = $ctx.compoundStatement().code;
+        } else if ($ctx.expression() != null) {
+            $ctx.code = $ctx.expression().code + ";";
+        } else if ($ctx.selectionStatement() != null) {
+            $ctx.code = $ctx.selectionStatement().code;
+        } else if ($ctx.iterationStatement() != null) {
+            $ctx.code = $ctx.iterationStatement().code;
+        } else if ($ctx.jumpStatement() != null) {
+            $ctx.code = $ctx.jumpStatement().code;
+        } else if ($ctx.tupleExpression() != null) {
+            $ctx.code = $ctx.tupleExpression().code;
+        } else {
+            $ctx.code = "\n";
+        }
+    }
     : labeledStatement
     | compoundStatement
-    | expression? Newline
     | selectionStatement
     | iterationStatement
     | jumpStatement
+    | tupleExpression
+    | expression? Newline
     ;
 
 labeledStatement // OK
-    : Identifier ':' statement
-    | 'case' constantExpression ':' statement
-    | 'default' ':' statement
+    returns [String code]
+    @after {
+        if ($ctx.Default() != null) {
+            $ctx.code = "default: " + $ctx.statement().code;
+        } else if ($ctx.Case() != null) {
+            $ctx.code = "case " + $ctx.conditionalExpression().code + ": " + $ctx.statement().code;
+        } else if ($ctx.Identifier() != null) {
+            $ctx.code = $ctx.Identifier().getText() + ": " + $ctx.statement().code;
+        }
+    }
+    : Default ':' statement
+    | Case conditionalExpression ':' statement
+    | Identifier ':' statement
     ;
 
 selectionStatement // OK
-    : 'if' '(' expression ')' statement elseStatement?
-    | 'switch' '(' expression ')' statement
+    returns [String code]
+    @after {
+        if ($ctx.If() != null) {
+            $ctx.code = "if (" + $ctx.expression().code + ") " + $ctx.statement().code;
+            if ($ctx.elseStatement() != null) {
+                $ctx.code += " " + $ctx.elseStatement().code;
+            }
+        } else if ($ctx.Switch() != null) {
+            $ctx.code = "switch(" + $ctx.expression().code + ") " + $ctx.statement().code;
+        }
+    }
+    : If '(' expression ')' statement elseStatement?
+    | Switch '(' expression ')' statement
     ;
 
 elseStatement
-    : 'else' statement
+    returns [String code]
+    @after {
+        $ctx.code = "else " + $ctx.statement().code;
+    }
+    : Else statement
     ;
 
 iterationStatement // OK
-    : 'while' '(' expression ')' statement
-    | 'do' statement While '(' expression ')' Newline
-    | 'for' '(' forCondition ')' statement
+    returns [String code]
+    @after {
+        if ($ctx.Do() != null) {
+            $ctx.code = "do " + $ctx.statement().code + " while (" + $ctx.expression().code + ");\n";
+        } else if ($ctx.For() != null) {
+            $ctx.code = "for (" + $ctx.forCondition().code + ") " + $ctx.statement().code;
+        } else if ($ctx.While() != null) {
+            $ctx.code = "while (" + $ctx.expression().code + ") " + $ctx.statement().code;
+        }
+    }
+    : Do statement While '(' expression ')' Newline
+    | For '(' forCondition ')' statement
+    | While '(' expression ')' statement
     ;
 
 forCondition // OK
-	: declaration ';' assignmentExpression? ';' assignmentExpression?
-	| expression? ';' assignmentExpression? ';' assignmentExpression?
+    returns [String code]
+    @after {
+        $ctx.code = "";
+        if ($ctx.declaration() != null) {
+            $ctx.code += $ctx.declaration().code;
+        } else if ($ctx.expression() != null) {
+            $ctx.code += $ctx.expression().code;
+        }
+        $ctx.code += "; ";
+        if ($ctx.assignmentExpression() != null) {
+            $ctx.code += $ctx.assignmentExpression().code;
+        }
+        $ctx.code += "; ";
+        if ($ctx.assignmentExpression2() != null) {
+            $ctx.code += $ctx.assignmentExpression2().code;
+        }
+    }
+	: declaration ';' assignmentExpression? ';' assignmentExpression2?
+	| expression? ';' assignmentExpression? ';' assignmentExpression2?
 	;
 
 jumpStatement // OK
-    : 'goto' Identifier Newline
-    | 'continue' Newline
-    | 'break' Newline
-    | 'return' expression? Newline
+    returns [String code]
+    @after {
+        if ($ctx.Goto() != null) {
+            $ctx.code = "goto " + $ctx.Identifier().getText() + ";\n";
+        } else if ($ctx.Continue() != null) {
+            $ctx.code = "continue;\n";
+        } else if ($ctx.Break() != null) {
+            $ctx.code = "break;\n";
+        } else if ($ctx.Return() != null) {
+            if ($ctx.expression() != null) {
+                $ctx.code = "return " + $ctx.expression().code + ";\n";
+            } else {
+                $ctx.code = "return;\n";
+            }
+        }
+    }
+    : Goto Identifier Newline
+    | Continue Newline
+    | Break Newline
+    | Return expression? Newline
     ;
 
 
@@ -127,26 +387,32 @@ jumpStatement // OK
 
 
 
-primaryExpression // OK
+primaryExpression
     : Identifier
     | Constant
     | StringLiteral
     | '(' expression ')'
     ;
 
-postfixExpression // TODO Left recursive
-    :   primaryExpression
-    |   postfixExpression '[' expression ']'
-    |   postfixExpression '(' argumentExpressionList? ')'
-    |   postfixExpression '.' Identifier
-    |   postfixExpression '->' Identifier
-    |   postfixExpression '++'
-    |   postfixExpression '--'
+postfixExpression
+    :   primaryExpression postfix*
+    ;
+
+postfix
+    : '[' expression ']'
+    | '(' argumentExpressionList? ')'
+    | '.' Identifier
+    | '->' Identifier
+    | '++'
+    | '--'
     ;
 
 argumentExpressionList
-    : assignmentExpression
-    | argumentExpressionList ',' assignmentExpression
+    : assignmentExpression argumentExpressionListCont*
+    ;
+
+argumentExpressionListCont
+    : ',' assignmentExpression
     ;
 
 unaryExpression
@@ -221,45 +487,125 @@ logicalAndExpression
     | logicalAndExpression '&&' inclusiveOrExpression
     ;
 
-logicalOrExpression
+logicalOrExpression // FIXME: getText()
+    returns [String code]
+    @after {
+        $ctx.code = $ctx.getText();
+    }
     : logicalAndExpression
     | logicalOrExpression '||' logicalAndExpression
     ;
 
-conditionalExpression
+conditionalExpression // OK
+    returns [String code]
+    @after {
+        $ctx.code = $ctx.logicalOrExpression().code;
+        if ($ctx.conditionalExpressionCont() != null) {
+            $ctx.code += conditionalExpressionCont().code;
+        }
+    }
     : logicalOrExpression conditionalExpressionCont?
     ;
 
-conditionalExpressionCont
+conditionalExpressionCont // OK
+    returns [String code]
+    @after {
+        $ctx.code = " ? " + $ctx.expression().code + " : " + $ctx.conditionalExpression().code;
+    }
     : '?' expression ':' conditionalExpression
     ;
 
-assignmentExpression
+assignmentExpression // FIXME: getText()
+    returns [String code]
+    @after {
+        if ($ctx.conditionalExpression() != null) {
+            $ctx.code = $ctx.conditionalExpression().code;
+        } else if ($ctx.unaryExpression() != null) {
+            $ctx.code = $ctx.unaryExpression().getText() + " " + $ctx.assignmentOperator().code + " " + $ctx.assignmentExpression().getText();
+        }
+    }
     : conditionalExpression
     | unaryExpression assignmentOperator assignmentExpression
     ;
 
-assignmentOperator
-    :   '=' | '*=' | '/=' | '%=' | '+=' | '-=' | '<<=' | '>>=' | '&=' | '^=' | '|='
+assignmentExpression2 // FIXME: getText()
+    returns [String code]
+    @after {
+        if ($ctx.conditionalExpression() != null) {
+            $ctx.code = $ctx.conditionalExpression().code;
+        } else if ($ctx.unaryExpression() != null) {
+            $ctx.code = $ctx.unaryExpression().getText() + " " + $ctx.assignmentOperator().code + " " + $ctx.assignmentExpression().getText();
+        }
+    }
+    : conditionalExpression
+    | unaryExpression assignmentOperator assignmentExpression
     ;
 
-expression
-    : assignmentExpression
-    | expression ',' assignmentExpression
-    | tupleExpression
+assignmentOperator // OK
+    returns [String code]
+    @after {
+        if ($ctx.Assign() != null) $ctx.code = $ctx.Assign().getText();
+        if ($ctx.StarAssign() != null) $ctx.code = $ctx.StarAssign().getText();
+        if ($ctx.DivAssign() != null) $ctx.code = $ctx.DivAssign().getText();
+        if ($ctx.ModAssign() != null) $ctx.code = $ctx.ModAssign().getText();
+        if ($ctx.PlusAssign() != null) $ctx.code = $ctx.PlusAssign().getText();
+        if ($ctx.MinusAssign() != null) $ctx.code = $ctx.MinusAssign().getText();
+        if ($ctx.LeftShiftAssign() != null) $ctx.code = $ctx.LeftShiftAssign().getText();
+        if ($ctx.RightShiftAssign() != null) $ctx.code = $ctx.RightShiftAssign().getText();
+        if ($ctx.AndAssign() != null) $ctx.code = $ctx.AndAssign().getText();
+        if ($ctx.XorAssign() != null) $ctx.code = $ctx.XorAssign().getText();
+        if ($ctx.OrAssign() != null) $ctx.code = $ctx.OrAssign().getText();
+    }
+    : Assign
+    | StarAssign
+    | DivAssign
+    | ModAssign
+    | PlusAssign
+    | MinusAssign
+    | LeftShiftAssign
+    | RightShiftAssign
+    | AndAssign
+    | XorAssign
+    | OrAssign
     ;
 
-constantExpression
-    :   conditionalExpression
+expression // OK
+    returns [String code]
+    @after {
+        $ctx.code = $ctx.assignmentExpression().code + stringify($ctx.expressionCont(), c -> c.code, "");
+    }
+    : assignmentExpression expressionCont*
     ;
 
-tupleExpression
-    : tuple '=' tupleAssignment
+expressionCont // OK
+    returns [String code]
+    @after {
+        $ctx.code = ", " + $ctx.assignmentExpression().code;
+    }
+    : ',' assignmentExpression
     ;
 
-tupleAssignment
-    : 'read' '(' argumentExpressionList? ')'
-    | 'print' '(' argumentExpressionList? ')'
+tupleExpression // OK
+    returns [String code]
+    @after {
+        $ctx.code = updateTuple($ctx.tuple().code, $ctx.type().code, $ctx.tupleAssignment().code);
+    }
+    : tuple ':' type '=' tupleAssignment
+    ;
+
+tupleAssignment // OK
+    returns [String code]
+    @after {
+        if ($ctx.Read() != null) {
+            $ctx.code = "scanf(" + $ctx.StringLiteral().getText() + ", %SCANF%);";
+        } else if ($ctx.Print() != null) {
+            $ctx.code = "printf(" + $ctx.StringLiteral().getText() + ", %PRINTF%);";
+        } else if ($ctx.tuple() != null) {
+            $ctx.code = $ctx.tuple().code;
+        }
+    }
+    : Read '(' StringLiteral ')'
+    | Print '(' StringLiteral ')'
     | tuple
     ;
 
@@ -381,25 +727,6 @@ Dot: '.';
 Directive
     : '#' (~[\\\r\n] | [\\] [\r\n])* Newline
     ;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

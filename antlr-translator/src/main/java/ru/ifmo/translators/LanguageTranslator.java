@@ -1,5 +1,11 @@
 package ru.ifmo.translators;
 
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -11,34 +17,19 @@ public class LanguageTranslator {
     }
 
     public static void main(String[] args) {
-//        CharStream input = CharStreams.fromPath(Paths.get(args[0]));
-//        ExprLexer lexer = new ExprLexer(input);
-//        CommonTokenStream tokens = new CommonTokenStream(lexer);
-//        ExprParser parser = new ExprParser(tokens);
-//        parser.getInterpreter().setPredictionMode(PredictionMode.SLL);
-//        try {
-//            parser.stat();  // STAGE 1
-//        }
-//        catch (Exception ex) {
-//            tokens.reset(); // rewind input stream
-//            parser.reset();
-//            parser.getInterpreter().setPredictionMode(PredictionMode.LL);
-//            parser.stat();  // STAGE 2
-//            // if we parse ok, it's LL not SLL
-//        }
+        if (args.length < 1) {
+            throw new IllegalArgumentException("Please specify the program file");
+        }
 
+        Path programFile = Paths.get(args[0]);
 
-
-        /*CharStream input = CharStreams.fromFileName ("program.pas");
-        LanguageLexer lexer = new LanguageLexer (input);
-        CommonTokenStream tokens = new CommonTokenStream (lexer);
-        pascalParser parser = new pascalParser (tokens);
-        parser.setBuildParseTree (false);
-        //System.out.println (parser.program ().code);
-        System.out.println (">> File parsed <<");
-
-        PrintWriter pw = new PrintWriter ("program.c");
-        pw.write (parser.program ().code);
-        pw.close ();*/
+        try {
+            GoodLanguageLexer lexer = new GoodLanguageLexer(CharStreams.fromPath(programFile));
+            GoodLanguageParser parser = new GoodLanguageParser(new CommonTokenStream(lexer));
+            GoodLanguageParser.ProgramContext program = parser.program();
+            System.out.println(program.code);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
