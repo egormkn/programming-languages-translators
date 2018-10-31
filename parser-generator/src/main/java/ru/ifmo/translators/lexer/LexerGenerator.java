@@ -74,7 +74,7 @@ public class LexerGenerator {
                 "        }\n" +
                 "    }\n" +
                 "\n" +
-                "    private List<Token> getTokens(InputStream is) throws IOException, ParseException {\n" +
+                "    public List<Token> getTokens(InputStream is) throws IOException, ParseException {\n" +
                 "        StringBuilder builder = new StringBuilder();\n" +
                 "        int c;\n" +
                 "        while ((c = is.read()) != -1) builder.append((char) c);\n" +
@@ -331,9 +331,9 @@ public class LexerGenerator {
         if (token instanceof LexerRule) {
             return "new " + ((LexerRule) token).getName() + "Token()";
         } else if (token instanceof LexerCharSet) {
-            return "new CharSetTokenHelper(\"" + ((LexerCharSet) token).getCharset().replace("\"", "\\\"") + "\")";
+            return "new CharSetTokenHelper(\"" + ((LexerCharSet) token).getCharset().replace("\"", "\\\"").replace("\\'", "'") + "\")";
         } else if (token instanceof LexerString) {
-            return "new StringTokenHelper(\"" + ((LexerString) token).getString().replace("\"", "\\\"") + "\")";
+            return "new StringTokenHelper(\"" + ((LexerString) token).getString().replace("\"", "\\\"").replace("\\'", "'") + "\")";
         } else {
             throw new AssertionError("Wrong token instance!");
         }

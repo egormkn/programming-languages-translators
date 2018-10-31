@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ParserGenerator {
 
@@ -49,197 +50,45 @@ public class ParserGenerator {
                 "import java.util.regex.Pattern;\n" +
                 "\n" +
                 "@SuppressWarnings({\"all\", \"warnings\", \"unchecked\", \"unused\", \"cast\"})\n" +
-                "public class " + grammar.getName() + "Lexer {\n" +
+                "public class " + grammar.getName() + "Parser {\n" +
                 "\n" +
                 grammar.getMembers() + "\n" +
-                "\n" +
-                "    // Non-fragment lexer rules\n" +
-                "    private static List<Class<? extends Token>> nonFragmentClasses = Arrays.asList(\n" +
-                "            " + grammar.getLexerRules().values().stream()
-                .filter(r -> !r.isFragment())
-                .map(r -> r.getName() + "Token.class")
-                .collect(Collectors.joining(",\n        ")) + "\n" +
-                "    );\n" +
-                "\n" +
-                "    // All lexer token types\n" +
-                "    public enum TokenType {\n" +
-                "        " + grammar.getLexerRules().values().stream()
-                .map(LexerRule::getName)
-                .map(String::toUpperCase)
-                .collect(Collectors.joining(",\n        ")) + ",\n" +
-                "        _NONE\n" +
-                "    }\n" +
                 "\n" +
                 "    public static void main(String[] args) {\n" +
                 "        Path inputFile = Paths.get(args[0]);\n" +
                 "        try {\n" +
                 "            InputStream is = new BufferedInputStream(new FileInputStream(inputFile.toFile()));\n" +
-                "            new " + grammar.getName() + "Lexer().getTokens(is).forEach(System.out::println);\n" +
+                "            List<" + grammar.getName() + "Lexer.Token> tokens = new " + grammar.getName() + "Lexer().getTokens(is);\n" +
+                "            System.out.println(new " + grammar.getName() + "Parser()." + grammar.getParserRules().values().iterator().next().getName() + "(tokens).toString());\n" +
                 "        } catch (Exception e) {\n" +
                 "            e.printStackTrace();\n" +
                 "        }\n" +
                 "    }\n" +
                 "\n" +
-                "    private List<Token> getTokens(InputStream is) throws IOException, ParseException {\n" +
-                "        StringBuilder builder = new StringBuilder();\n" +
-                "        int c;\n" +
-                "        while ((c = is.read()) != -1) builder.append((char) c);\n" +
-                "        CharBuffer input = CharBuffer.wrap(builder.toString());\n" +
                 "\n" +
-                "        int position = 0, length = input.length();\n" +
-                "\n" +
-                "        List<Token> tokens = new ArrayList<>();\n" +
-                "        while (position < length) {\n" +
-                "            Token token = getToken(input.subSequence(position, length));\n" +
-                "            if (token == null) throw new ParseException(\"Can't recognize token: \" + input.subSequence(position, length), position);\n" +
-                "            position += token.length();\n" +
-                "            if (!token.isSkip()) tokens.add(token);\n" +
+                "    public static abstract class RuleContext {\n" +
+                "        private StringBuilder builder = new StringBuilder();\n" +
+                "        \n" +
+                "        protected void addText(String s) {\n" +
+                "            builder.append(s);\n" +
                 "        }\n" +
-                "        if (position != length) {\n" +
-                "            throw new AssertionError(\"Position > length\");\n" +
-                "        }\n" +
-                "        return tokens;\n" +
-                "    }\n" +
-                "\n" +
-                "    private Token getToken(CharSequence input) {\n" +
-                "        for (Class<? extends Token> tokenClass : nonFragmentClasses) {\n" +
-                "            try {\n" +
-                "                Token t = tokenClass.getConstructor().newInstance();\n" +
-                "                if (t.consume(input) != null) return t;\n" +
-                "            } catch (Exception e) {\n" +
-                "                e.printStackTrace();\n" +
-                "            }\n" +
-                "        }\n" +
-                "        return null;\n" +
-                "    }\n" +
-                "\n" +
-                "    public static abstract class Token {\n" +
-                "        private final TokenType type;\n" +
-                "        private boolean skip;\n" +
-                "        protected String text = \"\", data = \"\";\n" +
-                "\n" +
-                "        protected Token() {\n" +
-                "            this.type = TokenType._NONE;\n" +
-                "            this.skip = false;\n" +
-                "        }\n" +
-                "\n" +
-                "        protected Token(TokenType type, boolean skip) {\n" +
-                "            this.type = type;\n" +
-                "            this.skip = skip;\n" +
-                "        }\n" +
-                "\n" +
-                "        public TokenType getType() {\n" +
-                "            return type;\n" +
-                "        }\n" +
-                "\n" +
-                "        public int getTypeId() {\n" +
-                "            return type.ordinal();\n" +
-                "        }\n" +
-                "\n" +
+                "        \n" +
                 "        public String getText() {\n" +
-                "            return text;\n" +
+                "            return builder.toString();\n" +
                 "        }\n" +
-                "\n" +
-                "        void setText(String text) {\n" +
-                "            this.text = text;\n" +
+                "        \n" +
+                "        public void setText(String s) {\n" +
+                "            builder = new StringBuilder(s);\n" +
                 "        }\n" +
-                "\n" +
-                "        void setSkip(boolean skip) {\n" +
-                "            this.skip = skip;\n" +
+                "        \n" +
+                "        private int length = 0;\n" +
+                "        \n" +
+                "        public void addLength(int n) {\n" +
+                "            length += n;\n" +
                 "        }\n" +
-                "\n" +
-                "        public boolean isSkip() {\n" +
-                "            return skip;\n" +
-                "        }\n" +
-                "\n" +
-                "        public String getData() {\n" +
-                "            return data;\n" +
-                "        }\n" +
-                "\n" +
+                "        \n" +
                 "        public int length() {\n" +
-                "            return data.length();\n" +
-                "        }\n" +
-                "\n" +
-                "        Token consume(CharSequence input) {\n" +
-                "            for (Function<CharSequence, List<Token>> alternative : getAlternatives()) {\n" +
-                "                List<Token> result = alternative.apply(input);\n" +
-                "                if (result != null) {\n" +
-                "                    result.forEach(t -> {\n" +
-                "                        text += t.text;\n" +
-                "                        data += t.data;\n" +
-                "                    });\n" +
-                "                    return this;\n" +
-                "                }\n" +
-                "            }\n" +
-                "            return null;\n" +
-                "        }\n" +
-                "\n" +
-                "        abstract List<Function<CharSequence, List<Token>>> getAlternatives();\n" +
-                "\n" +
-                "        @Override\n" +
-                "        public String toString() {\n" +
-                "            return new StringJoiner(\", \", Token.class.getSimpleName() + \"[\", \"]\")\n" +
-                "                    .add(\"type=\" + type)\n" +
-                "                    .add(\"skip=\" + skip)\n" +
-                "                    .add(\"text='\" + text + \"'\")\n" +
-                "                    .add(\"data='\" + data + \"'\")\n" +
-                "                    .toString();\n" +
-                "        }\n" +
-                "    }\n" +
-                "\n" +
-                "    private static class StringTokenHelper extends Token {\n" +
-                "\n" +
-                "        private final String str;\n" +
-                "\n" +
-                "        StringTokenHelper(String str) {\n" +
-                "            this.str = str;\n" +
-                "        }\n" +
-                "\n" +
-                "        @Override\n" +
-                "        public Token consume(CharSequence input) {\n" +
-                "            if (input.length() < str.length()) {\n" +
-                "                return null;\n" +
-                "            } else if (!input.subSequence(0, str.length()).toString().equals(str)) {\n" +
-                "                return null;\n" +
-                "            }\n" +
-                "\n" +
-                "            text += str;\n" +
-                "            data += str;\n" +
-                "            return this;\n" +
-                "        }\n" +
-                "\n" +
-                "        @Override\n" +
-                "        List<Function<CharSequence, List<Token>>> getAlternatives() {\n" +
-                "            return null;\n" +
-                "        }\n" +
-                "    }\n" +
-                "\n" +
-                "    private static class CharSetTokenHelper extends Token {\n" +
-                "\n" +
-                "        private final String charset;\n" +
-                "        private final Pattern pattern;\n" +
-                "\n" +
-                "        CharSetTokenHelper(String charset) {\n" +
-                "            this.charset = charset;\n" +
-                "            this.pattern = Pattern.compile(charset);\n" +
-                "        }\n" +
-                "\n" +
-                "        @Override\n" +
-                "        public Token consume(CharSequence input) {\n" +
-                "            if (input.length() < 1) {\n" +
-                "                return null;\n" +
-                "            } else if (!pattern.matcher(input.subSequence(0, 1)).find()) {\n" +
-                "                return null;\n" +
-                "            }\n" +
-                "\n" +
-                "            text += input.charAt(0);\n" +
-                "            data += input.charAt(0);\n" +
-                "            return this;\n" +
-                "        }\n" +
-                "\n" +
-                "        @Override\n" +
-                "        List<Function<CharSequence, List<Token>>> getAlternatives() {\n" +
-                "            return null;\n" +
+                "            return length;\n" +
                 "        }\n" +
                 "    }\n" +
                 "\n" +
@@ -253,58 +102,220 @@ public class ParserGenerator {
     }
 
     private String generateRuleContext(ParserRule rule) {
+        Map<String, Boolean> lexerRules = new HashMap<>();
+        Map<String, Boolean> parserRules = new HashMap<>();
+        System.err.println(rule.getName());
+        countContextFields(rule.getAlternative(), lexerRules, parserRules);
+        for (Map.Entry<String, Boolean> entry : lexerRules.entrySet()) {
+            System.err.println(entry.getKey() + ": " + (entry.getValue() ? "list" : "single"));
+        }
+        for (Map.Entry<String, Boolean> entry : parserRules.entrySet()) {
+            System.err.println(entry.getKey() + ": " + (entry.getValue() ? "list" : "single"));
+        }
+        System.err.println();
+
+        StringJoiner ruleFields = new StringJoiner("\n");
+        lexerRules.forEach((String key, Boolean isMany) -> {
+            if (!isMany) {
+                ruleFields.add("        public " + grammar.getName() + "Lexer.Token " + key + ";");
+            } else {
+                ruleFields.add("        public List<" + grammar.getName() + "Lexer.Token> " + key + " = new ArrayList<>();");
+            }
+        });
+        parserRules.forEach((String key, Boolean isMany) -> {
+            String name = upper(key);
+            if (!isMany) {
+                ruleFields.add("        public " + name + "RuleContext " + key + ";");
+            } else {
+                ruleFields.add("        public List<" + name + "RuleContext> " + key + " = new ArrayList<>();");
+            }
+        });
+
+
         String name = Character.toUpperCase(rule.getName().charAt(0)) + rule.getName().substring(1);
         StringJoiner joiner = new StringJoiner("\n")
                 .add("    public static class " + name + "RuleContext extends RuleContext {")
                 .add("        public " + name + "RuleContext() {")
                 .add("            ")
                 .add("        }")
+                .add("        public void after() {")
+                .add("            " + rule.getAfterCode().replace("$ctx", "((" + name + "RuleContext) this)"))
+                .add("        }")
                 .add("    ")
-                .add(generateRuleContextFields(rule))
+                .add(ruleFields.toString())
+                .add("    ")
+                .add(generateReturnFields(rule.getRet()))
+                .add("    }")
+                .add("    ")
+                .add("    public " + name + "RuleContext " + rule.getName() + "(List<" + grammar.getName() + "Lexer.Token> tokens" + (!rule.getArgs().isEmpty() ? ", " + rule.getArgs() : "") + ") {")
+                .add(rule.getAlternatives().stream().map(sequence -> generateAlternative(sequence, name, lexerRules, parserRules)).collect(Collectors.joining("\n\n")))
+                .add("        return null;")
                 .add("    }")
                 .add("    ");
+
+
         return joiner.toString();
     }
 
-    private String generateRuleContextFields(ParserRule rule) {
-        Map<String, Integer> lexerRules = new HashMap<>();
-        Map<String, Integer> parserRules = new HashMap<>();
-        countContextFields(rule.getAlternative(), lexerRules, parserRules);
+    private String generateAlternative(List<ParserAlternative.Wrapper> sequence, String name, Map<String, Boolean> lexerRules, Map<String, Boolean> parserRules) {
+        return "        do {\n" +
+                "            " + name + "RuleContext ctx = new " + name + "RuleContext();\n" +
+                "            List<" + grammar.getName() + "Lexer.Token> input = tokens;\n" +
+                "\n" +
+                sequence.stream()
+                        .map(w -> "            {\n" + generateConsumer(w, name, lexerRules, parserRules) + "\n            }\n")
+                        .collect(Collectors.joining("\n")) +
+                "\n" +
+                "            if (ctx == null) break;\n" +
+                "            ctx.after();\n" +
+                "            return ctx;\n" +
+                "        } while (false);\n";
+    }
 
+    private String generateConsumer(ParserAlternative.Wrapper wrapper, String name, Map<String, Boolean> lexerRules, Map<String, Boolean> parserRules) {
+        ParserToken token = wrapper.getToken();
+        if (token instanceof LexerRule) {
+            return generateLexerConsumer(wrapper, (LexerRule) token, lexerRules, parserRules);
+        } else if (token instanceof ParserRule) {
+            return generateParserConsumer(wrapper, (ParserRule) token, lexerRules, parserRules);
+        } else {
+            throw new AssertionError("Inner alternatives are not supported");
+        }
+    }
+
+    private String generateParserConsumer(ParserAlternative.Wrapper wrapper, ParserRule token, Map<String, Boolean> lexerRules, Map<String, Boolean> parserRules) {
+        String name = Character.toUpperCase(token.getName().charAt(0)) + token.getName().substring(1);
         StringJoiner joiner = new StringJoiner("\n");
-        lexerRules.forEach((String key, Integer value) -> {
-            if (value == 1) {
-                joiner.add("        public Token " + key + ";");
-            } else {
-                joiner.add("        public List<Token> " + key + " = new ArrayList<>();");
-            }
-        });
-        parserRules.forEach((String key, Integer value) -> {
-            String name = upper(key);
-            if (value == 1) {
-                joiner.add("        public " + name + "RuleContext " + key + ";");
-            } else {
-                joiner.add("        public List<" + name + "RuleContext> " + key + " = new ArrayList<>();");
-            }
-        });
+        // TODO: Support customname, customop
+        switch (wrapper.getRepeat()) {
+            case ONCE:
+                joiner
+                        .add("                " + name + "RuleContext token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "if (token == null) {")
+                        .add("                " + "    break;")
+                        .add("                " + "}")
+                        .add("                " + "ctx.addLength(token.length());")
+                        .add("                " + "ctx." + token.getName() + (parserRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
+                        .add("                " + "input = input.subList(token.length(), input.size());");
+                break;
+            case ANY:
+                joiner
+                        .add("                " + name + "RuleContext token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "while (token != null) {")
+                        .add("                " + "    ctx.addLength(token.length());")
+                        .add("                " + "    ctx." + token.getName() + ".add(token);")
+                        .add("                " + "    input = input.subList(token.length(), input.size());")
+                        .add("                " + "    token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "}");
+                break;
+            case MAYBE:
+                joiner
+                        .add("                " + name + "RuleContext token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "if (token != null) {")
+                        .add("                " + "    ctx.addLength(token.length());")
+                        .add("                " + "    ctx." + token.getName() + (parserRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
+                        .add("                " + "    input = input.subList(token.length(), input.size());")
+                        .add("                " + "}");
+                break;
+            case SOME:
+                joiner
+                        .add("                " + name + "RuleContext token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "if (token == null) {")
+                        .add("                " + "    break;")
+                        .add("                " + "}")
+                        .add("                " + "ctx." + token.getName() + ".add(token);")
+                        .add("                " + "input = input.subList(token.length(), input.size());")
+                        .add("                " + "token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "while (token != null) {")
+                        .add("                " + "    ctx." + token.getName() + ".add(token);")
+                        .add("                " + "    input = input.subList(token.length(), input.size());")
+                        .add("                " + "token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "}");
+                break;
+        }
         return joiner.toString();
     }
+
+
+    private String generateLexerConsumer(ParserAlternative.Wrapper wrapper, LexerRule token, Map<String, Boolean> lexerRules, Map<String, Boolean> parserRules) {
+        if (token.getName().equals("_EPS")) return "// Epsilon rule";
+
+        String name = Character.toUpperCase(token.getName().charAt(0)) + token.getName().substring(1);
+        StringJoiner joiner = new StringJoiner("\n");
+        // TODO: Support customname, customop
+        switch (wrapper.getRepeat()) {
+            case ONCE:
+                joiner
+                        .add("                " + "if (input.isEmpty()) break;")
+                        .add("                " + grammar.getName() + "Lexer.Token token = input.get(0);")
+                        .add("                " + "if (token.getType() != " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
+                        .add("                " + "    break;")
+                        .add("                " + "}")
+                        .add("                " + "ctx.addLength(1);")
+                        .add("                " + "ctx." + token.getName() + (lexerRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
+                        .add("                " + "input = input.subList(1, input.size());");
+                break;
+            case ANY:
+                joiner
+                        .add("                " + grammar.getName() + "Lexer.Token token = input.isEmpty() ? null : input.get(0);")
+                        .add("                " + "while (!input.isEmpty() && token.getType() == " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
+                        .add("                " + "    ctx.addLength(1);")
+                        .add("                " + "    ctx." + token.getName() + ".add(token);")
+                        .add("                " + "    input = input.subList(1, input.size());")
+                        .add("                " + "    token = input.isEmpty() ? null : input.get(0);")
+                        .add("                " + "}");
+                break;
+            case MAYBE:
+                joiner
+                        .add("                " + grammar.getName() + "Lexer.Token token = input.isEmpty() ? null : input.get(0);")
+                        .add("                " + "if (!input.isEmpty() && token.getType() == " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
+                        .add("                " + "    ctx.addLength(1);")
+                        .add("                " + "    ctx." + token.getName() + (lexerRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
+                        .add("                " + "    input = input.subList(1, input.size());")
+                        .add("                " + "}");
+                break;
+            case SOME:
+                joiner
+                        .add("                " + "if (input.isEmpty()) break;")
+                        .add("                " + grammar.getName() + "Lexer.Token token = input.get(0);")
+                        .add("                " + "if (token.getType() != " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
+                        .add("                " + "    break;")
+                        .add("                " + "}")
+                        .add("                " + "ctx.addLength(1);")
+                        .add("                " + "    ctx." + token.getName() + ".add(token);")
+                        .add("                " + "input = input.subList(1, input.size());")
+                        .add("                " + "token = input.get(0);")
+                        .add("                " + "while (!input.isEmpty() && token.getType() == " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
+                        .add("                " + "    ctx.addLength(1);")
+                        .add("                " + "    ctx." + token.getName() + ".add(token);")
+                        .add("                " + "    input = input.subList(1, input.size());")
+                        .add("                " + "    token = input.isEmpty() ? null : input.get(0);")
+                        .add("                " + "}");
+                break;
+        }
+        return joiner.toString();
+    }
+
 
     private void countContextFields(ParserAlternative alternative,
-                                    Map<String, Integer> lexerRules,
-                                    Map<String, Integer> parserRules) {
+                                    Map<String, Boolean> lexerRules,
+                                    Map<String, Boolean> parserRules) {
         for (List<ParserAlternative.Wrapper> sequence : alternative.getAlternatives()) {
             for (ParserAlternative.Wrapper wrapper : sequence) {
                 ParserToken token = wrapper.getToken();
-                System.out.println(token.toString());
+                Token.Repeat repeat = wrapper.getRepeat();
+                boolean repeatMany = repeat == Token.Repeat.ANY || repeat == Token.Repeat.SOME;
                 if (token instanceof LexerRule) {
                     lexerRules.compute(
                             ((LexerRule) token).getName(),
-                            (String key, Integer i) -> i == null ? 1 : i + 1);
+                            (String key, Boolean isMany) -> isMany != null || repeatMany);
                 } else if (token instanceof ParserRule) {
                     parserRules.compute(
                             ((ParserRule) token).getName(),
-                            (String key, Integer i) -> i == null ? 1 : i + 1);
+                            (String key, Boolean isMany) -> isMany != null || repeatMany);
+                    if (((ParserRule) token).getName().startsWith("_flatten_")) {
+                        countContextFields(((ParserRule) token).getAlternative(), lexerRules, parserRules);
+                    }
                 } else if (token instanceof ParserAlternative) {
                     countContextFields((ParserAlternative) token, lexerRules, parserRules);
                 } else {
@@ -312,5 +323,15 @@ public class ParserGenerator {
                 }
             }
         }
+    }
+
+
+    private String generateReturnFields(String ret) {
+        return ret.isEmpty()
+                ? ""
+                : Stream.of(ret.split(","))
+                .map(String::trim)
+                .map(f -> "        public " + f + ";")
+                .collect(Collectors.joining("\n"));
     }
 }

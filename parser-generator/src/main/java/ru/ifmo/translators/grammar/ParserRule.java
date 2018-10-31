@@ -13,14 +13,24 @@ public class ParserRule implements ParserToken {
     private ParserAlternative alternative;
 
     public ParserRule(GrammarParser.GrammarParserRuleContext rule) {
-        name = rule.name.getText();
-        args = rule.args == null ? "" : rule.args.getText();
-        ret = rule.ret == null ? "" : rule.ret.getText();
-        initCode = rule.init == null ? "" : rule.init.getText();
-        afterCode = rule.after == null ? "" : rule.after.getText();
+        this.name = rule.name.getText();
+        this.args = rule.args == null ? "" : rule.args.getText();
+        this.ret = rule.ret == null ? "" : rule.ret.getText();
+        this.initCode = rule.init == null ? "" : rule.init.getText();
+        this.afterCode = rule.after == null ? "" : rule.after.getText();
 
-        alternativeContext = rule.alternative;
-        alternative = null;
+        this.alternativeContext = rule.alternative;
+        this.alternative = null;
+    }
+
+    public ParserRule(String name, String args, String ret, String initCode, String afterCode, ParserAlternative alternative) {
+        this.name = name;
+        this.args = args;
+        this.ret = ret;
+        this.initCode = initCode;
+        this.afterCode = afterCode;
+        this.alternativeContext = null;
+        this.alternative = alternative;
     }
 
     public String getName() {
@@ -52,7 +62,9 @@ public class ParserRule implements ParserToken {
     }
 
     public void bind(Grammar grammar) {
-        alternative = new ParserAlternative(alternativeContext, grammar);
+        if (alternativeContext != null) {
+            alternative = new ParserAlternative(alternativeContext, grammar);
+        }
     }
 
     @Override

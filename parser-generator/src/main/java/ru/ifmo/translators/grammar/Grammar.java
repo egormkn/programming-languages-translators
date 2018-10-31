@@ -18,7 +18,8 @@ public class Grammar {
     private final String header;
     private final String members;
     private final String footer;
-    private final Map<String, LexerRule> dictionary = new HashMap<>();
+    private final Map<String, LexerRule> lexerDictionary = new HashMap<>();
+    private final Map<String, LexerRule> parserDictionary = new HashMap<>();
 
     public Grammar(GrammarParser.GrammarFileContext grammarFile) {
         this.name = grammarFile.name.getText();
@@ -34,7 +35,6 @@ public class Grammar {
 
         lexerRules.put("", LexerRule.EMPTY);
 
-        flattenLexerAlternatives();
 
         for (GrammarParser.GrammarParserRuleContext rule : grammarFile.parserRules) {
             ParserRule parserRule = new ParserRule(rule);
@@ -42,7 +42,11 @@ public class Grammar {
         }
         parserRules.forEach((String key, ParserRule rule) -> rule.bind(this));
 
+
+        flattenLexerAlternatives();
+        flattenParserAlternatives();
         buildDictionary();
+
     }
 
     public static Grammar parse(Path path) throws IOException {
@@ -59,7 +63,10 @@ public class Grammar {
                 LexerAlternative.Wrapper wrapper = alternatives.get(0).get(0);
                 LexerToken token = wrapper.getToken();
                 if (token instanceof LexerString) {
-                    dictionary.put(((LexerString) token).getString(), rule);
+                    lexerDictionary.putIfAbsent(((LexerString) token).getString(), rule);
+                    if (!rule.isSkip() && !rule.isFragment()) {
+                        parserDictionary.putIfAbsent(((LexerString) token).getString(), rule);
+                    }
                 }
             }
         }
@@ -71,8 +78,8 @@ public class Grammar {
                     LexerToken token = wrapper.getToken();
                     if (token instanceof LexerString) {
                         String str = ((LexerString) token).getString();
-                        LexerRule fromDict = dictionary.get(str);
-                        if (fromDict != null && fromDict != rule) {
+                        LexerRule fromDict = lexerDictionary.get(str);
+                        if (fromDict != null && fromDict != rule && fromDict.isSkip() == rule.isSkip()) {
                             iter.set(new LexerAlternative.Wrapper(fromDict, wrapper.getRepeat()));
                         }
                     }
@@ -87,7 +94,7 @@ public class Grammar {
                     ParserToken token = wrapper.getToken();
                     if (token instanceof LexerString) {
                         String str = ((LexerString) token).getString();
-                        LexerRule fromDict = dictionary.get(str);
+                        LexerRule fromDict = parserDictionary.get(str);
                         if (fromDict != null) {
                             iter.set(new ParserAlternative.Wrapper(
                                     fromDict,
@@ -97,6 +104,9 @@ public class Grammar {
                                     wrapper.getCustomName(),
                                     wrapper.getCustomOp()
                             ));
+                        } else {
+                            System.err.println("Implicit token for string \"" + str + "\"");
+                            throw new AssertionError();
                         }
                     }
                 }
@@ -114,11 +124,32 @@ public class Grammar {
                     LexerAlternative.Wrapper wrapper = iter.next();
                     LexerToken token = wrapper.getToken();
                     if (token instanceof LexerAlternative) {
-                        String name = "_Flatten" + rule.getName() + String.valueOf(counter++);
+                        String name = rule.getName() + "_flatten" + String.valueOf(counter++);
                         LexerRule flattened = new LexerRule(name, true, rule.isSkip(), (LexerAlternative) token);
                         lexerRules.put(name, flattened);
                         queue.add(flattened);
                         iter.set(new LexerAlternative.Wrapper(flattened, wrapper.getRepeat()));
+                    }
+                }
+            }
+        }
+    }
+
+    private void flattenParserAlternatives() {
+        Queue<ParserRule> queue = new ArrayDeque<>(parserRules.values());
+        while (!queue.isEmpty()) {
+            ParserRule rule = queue.poll();
+            int counter = 0;
+            for (List<ParserAlternative.Wrapper> wrappers : rule.getAlternatives()) {
+                for (ListIterator<ParserAlternative.Wrapper> iter = wrappers.listIterator(); iter.hasNext(); ) {
+                    ParserAlternative.Wrapper wrapper = iter.next();
+                    ParserToken token = wrapper.getToken();
+                    if (token instanceof ParserAlternative) {
+                        String name = rule.getName() + "_flatten" + String.valueOf(counter++);
+                        ParserRule flattened = new ParserRule(name, rule.getArgs(), rule.getRet(), "", "", (ParserAlternative) token);
+                        parserRules.put(name, flattened);
+                        queue.add(flattened);
+                        iter.set(new ParserAlternative.Wrapper(flattened, wrapper.getRepeat(), wrapper.getCode(), rule.getArgs() /* FIXME: _flatten_aaa[String code] -> _flatten_aaa[code] */, wrapper.getCustomName(), wrapper.getCustomOp()));
                     }
                 }
             }
