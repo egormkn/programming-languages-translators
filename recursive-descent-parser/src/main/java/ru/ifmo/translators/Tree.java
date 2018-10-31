@@ -13,6 +13,7 @@ import edu.uci.ics.jung.visualization.renderers.Renderer;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.Ellipse2D;
 import java.util.Arrays;
 import java.util.List;
 
@@ -53,10 +54,10 @@ public class Tree {
 
         RenderContext<Tree, Integer> renderContext = vv.getRenderContext();
 
-        /*renderContext.setVertexShapeTransformer(n -> {
+        renderContext.setVertexShapeTransformer(n -> {
             double width = n == null ? 25 : Math.max(n.toString().length() * 10, 25);
             return new Ellipse2D.Double(-(width / 2), -12.5, width, 25.0);
-        });*/
+        });
         renderContext.setEdgeShapeTransformer(EdgeShape.line(delegateTree));
         renderContext.setVertexLabelTransformer(new ToStringLabeller());
         renderContext.setVertexFillPaintTransformer(t -> Color.WHITE);
@@ -86,7 +87,6 @@ public class Tree {
     }
 
     private void print(int level) {
-
         StringBuilder builder = new StringBuilder(level * 4);
         for (int i = 0; i < (level - 1) * 4; i++) {
             builder.append(i % 4 == 0 ? '│' : ' ');
