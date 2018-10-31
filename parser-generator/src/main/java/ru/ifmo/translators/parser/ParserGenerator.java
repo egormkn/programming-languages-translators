@@ -115,19 +115,44 @@ public class ParserGenerator {
         System.err.println();
 
         StringJoiner ruleFields = new StringJoiner("\n");
+        StringJoiner ruleMethods = new StringJoiner("\n");
         lexerRules.forEach((String key, Boolean isMany) -> {
             if (!isMany) {
-                ruleFields.add("        public " + grammar.getName() + "Lexer.Token " + key + ";");
+                ruleFields
+                        .add("        private " + grammar.getName() + "Lexer.Token " + key + ";");
+                ruleMethods
+                        .add("        public " + grammar.getName() + "Lexer.Token " + key + "() {")
+                        .add("            return " + key + ";")
+                        .add("        }")
+                        .add("        ");
             } else {
-                ruleFields.add("        public List<" + grammar.getName() + "Lexer.Token> " + key + " = new ArrayList<>();");
+                ruleFields
+                        .add("        private List<" + grammar.getName() + "Lexer.Token> " + key + " = new ArrayList<>();");
+                ruleMethods
+                        .add("        public List<" + grammar.getName() + "Lexer.Token> " + key + "() {")
+                        .add("            return " + key + ";")
+                        .add("        }")
+                        .add("        ");
             }
         });
         parserRules.forEach((String key, Boolean isMany) -> {
             String name = upper(key);
             if (!isMany) {
-                ruleFields.add("        public " + name + "RuleContext " + key + ";");
+                ruleFields
+                        .add("        private " + name + "RuleContext " + key + ";");
+                ruleMethods
+                        .add("        public " + name + "RuleContext " + key + "() {")
+                        .add("            return " + key + ";")
+                        .add("        }")
+                        .add("        ");
             } else {
-                ruleFields.add("        public List<" + name + "RuleContext> " + key + " = new ArrayList<>();");
+                ruleFields
+                        .add("        private List<" + name + "RuleContext> " + key + " = new ArrayList<>();");
+                ruleMethods
+                        .add("        public List<" + name + "RuleContext> " + key + "() {")
+                        .add("            return " + key + ";")
+                        .add("        }")
+                        .add("        ");
             }
         });
 
@@ -139,10 +164,12 @@ public class ParserGenerator {
                 .add("            ")
                 .add("        }")
                 .add("        public void after() {")
-                .add("            " + rule.getAfterCode().replace("$ctx", "((" + name + "RuleContext) this)"))
+                .add("            " + rule.getAfterCode().replaceAll("\\$ctx", "((" + name + "RuleContext) this)"))
                 .add("        }")
                 .add("    ")
                 .add(ruleFields.toString())
+                .add("    ")
+                .add(ruleMethods.toString())
                 .add("    ")
                 .add(generateReturnFields(rule.getRet()))
                 .add("    }")
