@@ -3,18 +3,22 @@
 /* Multiline
     comment  */
 
-int main() {
-    int (a, b, c) = read("%d %d %d")
+var [a, b, c]: int = read("%d %d %d")
 
-    int[] arr = 1..10
+function main(): int {
+    var [a, b, c]: int = read("%d %d %d")
 
-    for (c, [i] : arr) {
+    var arr: int* = {0, 1, 2}
+
+    /*for (c, [i] : arr) {
         string str = "a[%d] = %d" << (i, c)
         print(str)
-    }
+    }*/
 
-    a, b, c = b, c, a
+    [a, b, c] = [b, c, a]
 
-    print("a: %d, b: %d, c: %d" << (a, b, c))
+    a[3] = 3
+
+    [a, b, c] = print("a: %d, b: %d, c: %d")
 }
 
