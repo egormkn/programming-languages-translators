@@ -14,18 +14,22 @@ import edu.uci.ics.jung.visualization.renderers.Renderer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
+import java.util.Queue;
 
 public class Tree {
 
-    private static int edgeNumber = 0;
     private final String name;
     private final List<Tree> children;
 
     public Tree(String name, Tree... children) {
+        this(name, Arrays.asList(children));
+    }
+
+    public Tree(String name, List<Tree> children) {
         this.name = name;
-        this.children = Arrays.asList(children);
+        this.children = children;
     }
 
     public String getName() {
@@ -41,18 +45,24 @@ public class Tree {
         return name;
     }
 
-    public void print() {
+    public void visualize() {
         DelegateTree<Tree, Integer> delegateTree = new DelegateTree<>(new DirectedOrderedSparseMultigraph<>());
         delegateTree.addVertex(this);
-        edgeNumber = 0;
-        for (Tree child : children) {
-            child.addToTree(delegateTree, this);
+        Queue<Tree> queue = new LinkedList<>(Collections.singleton(this));
+
+        int edge = 0;
+        while (!queue.isEmpty()) {
+            Tree parent = queue.poll();
+            for (Tree child : parent.children) {
+                delegateTree.addChild(edge++, parent, child);
+                queue.add(child);
+            }
         }
 
         TreeLayout<Tree, Integer> layout = new TreeLayout<>(delegateTree);
-        VisualizationViewer<Tree, Integer> vv = new VisualizationViewer<>(layout);
+        VisualizationViewer<Tree, Integer> viewer = new VisualizationViewer<>(layout);
 
-        RenderContext<Tree, Integer> renderContext = vv.getRenderContext();
+        RenderContext<Tree, Integer> renderContext = viewer.getRenderContext();
 
         renderContext.setVertexShapeTransformer(n -> {
             double width = n == null ? 25 : Math.max(n.toString().length() * 10, 25);
@@ -63,41 +73,19 @@ public class Tree {
         renderContext.setVertexFillPaintTransformer(t -> Color.WHITE);
         renderContext.setVertexDrawPaintTransformer(t -> Color.GRAY);
 
-        vv.getRenderer().getVertexLabelRenderer().setPosition(Renderer.VertexLabel.Position.CNTR);
+        viewer.getRenderer().getVertexLabelRenderer().setPosition(Renderer.VertexLabel.Position.CNTR);
 
-        vv.setPreferredSize(new Dimension(1280, 720));
+        viewer.setPreferredSize(new Dimension(1280, 720));
 
         DefaultModalGraphMouse gm = new DefaultModalGraphMouse();
         gm.setMode(ModalGraphMouse.Mode.TRANSFORMING);
-        vv.setGraphMouse(gm);
+        viewer.setGraphMouse(gm);
 
         JFrame frame = new JFrame("JUNG2 Graph Visualizer");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().add(vv);
+        frame.getContentPane().add(viewer);
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
-    }
-
-    private void addToTree(DelegateTree<Tree, Integer> delegateTree, Tree parent) {
-        delegateTree.addChild(edgeNumber++, parent, this);
-        for (Tree child : children) {
-            child.addToTree(delegateTree, this);
-        }
-    }
-
-    private void print(int level) {
-        StringBuilder builder = new StringBuilder(level * 4);
-        for (int i = 0; i < (level - 1) * 4; i++) {
-            builder.append(i % 4 == 0 ? '│' : ' ');
-        }
-
-        String padding = builder.toString();
-        System.out.print(padding);
-        if (level > 0) System.out.print("└───");
-        System.out.println(name);
-        for (Tree t : children) {
-            t.print(level + 1);
-        }
     }
 }

@@ -116,7 +116,7 @@ public class RecursiveDescentParserTest {
         try {
             InputStream is = new ByteArrayInputStream("((abc*b|a)*ab(aa|b*)b)*".getBytes(StandardCharsets.UTF_8));
             Tree t = p.parse(is);
-            t.print();
+            t.visualize();
             Thread.sleep(100000);
         } catch (Exception e) {
             e.printStackTrace();
