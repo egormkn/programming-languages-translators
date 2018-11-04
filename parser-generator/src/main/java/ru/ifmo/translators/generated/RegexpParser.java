@@ -182,6 +182,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.composition = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -192,6 +193,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.expressionOr = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -201,6 +203,8 @@ public class RegexpParser {
             return ctx;
         } while (false);
 
+        // System.err.println("Can't build expression from input: ");
+        // tokens.forEach(System.out::println);
         return null;
     }
     
@@ -254,6 +258,7 @@ public class RegexpParser {
                 if (token.getType() != RegexpLexer.TokenType.BAR) {
                     break;
                 }
+                ctx.addText(token.getText());
                 ctx.addLength(1);
                 ctx.Bar = token;
                 input = input.subList(1, input.size());
@@ -265,6 +270,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.composition = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -275,6 +281,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.expressionOr = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -298,6 +305,8 @@ public class RegexpParser {
             return ctx;
         } while (false);
 
+        // System.err.println("Can't build expressionOr from input: ");
+        // tokens.forEach(System.out::println);
         return null;
     }
     
@@ -337,6 +346,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.kleene = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -347,6 +357,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.compositionAnd = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -356,6 +367,8 @@ public class RegexpParser {
             return ctx;
         } while (false);
 
+        // System.err.println("Can't build composition from input: ");
+        // tokens.forEach(System.out::println);
         return null;
     }
     
@@ -404,6 +417,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.kleene = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -414,6 +428,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.compositionAnd = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -437,6 +452,8 @@ public class RegexpParser {
             return ctx;
         } while (false);
 
+        // System.err.println("Can't build compositionAnd from input: ");
+        // tokens.forEach(System.out::println);
         return null;
     }
     
@@ -480,6 +497,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.token = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -488,6 +506,7 @@ public class RegexpParser {
                 RegexpLexer.Token token = input.isEmpty() ? null : input.get(0);
                 if (!input.isEmpty() && token.getType() == RegexpLexer.TokenType.OPERATOR) {
                     ctx.addLength(1);
+                    ctx.addText(token.getText());
                     ctx.Operator = token;
                     input = input.subList(1, input.size());
                 }
@@ -498,6 +517,8 @@ public class RegexpParser {
             return ctx;
         } while (false);
 
+        // System.err.println("Can't build kleene from input: ");
+        // tokens.forEach(System.out::println);
         return null;
     }
     
@@ -551,6 +572,7 @@ public class RegexpParser {
                 if (token.getType() != RegexpLexer.TokenType.LPAREN) {
                     break;
                 }
+                ctx.addText(token.getText());
                 ctx.addLength(1);
                 ctx.Lparen = token;
                 input = input.subList(1, input.size());
@@ -562,6 +584,7 @@ public class RegexpParser {
                     break;
                 }
                 ctx.addLength(token.length());
+                ctx.addText(token.getText());
                 ctx.expression = token;
                 input = input.subList(token.length(), input.size());
             }
@@ -572,6 +595,7 @@ public class RegexpParser {
                 if (token.getType() != RegexpLexer.TokenType.RPAREN) {
                     break;
                 }
+                ctx.addText(token.getText());
                 ctx.addLength(1);
                 ctx.Rparen = token;
                 input = input.subList(1, input.size());
@@ -593,6 +617,7 @@ public class RegexpParser {
                 if (token.getType() != RegexpLexer.TokenType.LETTER) {
                     break;
                 }
+                ctx.addText(token.getText());
                 ctx.addLength(1);
                 ctx.Letter = token;
                 input = input.subList(1, input.size());
@@ -603,6 +628,8 @@ public class RegexpParser {
             return ctx;
         } while (false);
 
+        // System.err.println("Can't build token from input: ");
+        // tokens.forEach(System.out::println);
         return null;
     }
     
