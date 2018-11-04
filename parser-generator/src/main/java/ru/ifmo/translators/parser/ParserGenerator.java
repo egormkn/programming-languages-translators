@@ -176,6 +176,8 @@ public class ParserGenerator {
                 .add("    ")
                 .add("    public " + name + "RuleContext " + rule.getName() + "(List<" + grammar.getName() + "Lexer.Token> tokens" + (!rule.getArgs().isEmpty() ? ", " + rule.getArgs() : "") + ") {")
                 .add(rule.getAlternatives().stream().map(sequence -> generateAlternative(sequence, name, lexerRules, parserRules)).collect(Collectors.joining("\n\n")))
+                .add("        // System.err.println(\"Can't build " + rule.getName() + " from input: \");")
+                .add("        // tokens.forEach(System.out::println);")
                 .add("        return null;")
                 .add("    }")
                 .add("    ");
@@ -222,6 +224,7 @@ public class ParserGenerator {
                         .add("                " + "    break;")
                         .add("                " + "}")
                         .add("                " + "ctx.addLength(token.length());")
+                        .add("                " + "ctx.addText(token.getText());")
                         .add("                " + "ctx." + token.getName() + (parserRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
                         .add("                " + "input = input.subList(token.length(), input.size());");
                 break;
@@ -230,6 +233,7 @@ public class ParserGenerator {
                         .add("                " + name + "RuleContext token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
                         .add("                " + "while (token != null) {")
                         .add("                " + "    ctx.addLength(token.length());")
+                        .add("                " + "    ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + ".add(token);")
                         .add("                " + "    input = input.subList(token.length(), input.size());")
                         .add("                " + "    token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
@@ -240,6 +244,7 @@ public class ParserGenerator {
                         .add("                " + name + "RuleContext token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
                         .add("                " + "if (token != null) {")
                         .add("                " + "    ctx.addLength(token.length());")
+                        .add("                " + "    ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + (parserRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
                         .add("                " + "    input = input.subList(token.length(), input.size());")
                         .add("                " + "}");
@@ -250,13 +255,17 @@ public class ParserGenerator {
                         .add("                " + "if (token == null) {")
                         .add("                " + "    break;")
                         .add("                " + "}")
+                        .add("                " + "ctx.addLength(token.length());")
+                        .add("                " + "ctx.addText(token.getText());")
                         .add("                " + "ctx." + token.getName() + ".add(token);")
                         .add("                " + "input = input.subList(token.length(), input.size());")
                         .add("                " + "token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
                         .add("                " + "while (token != null) {")
+                        .add("                " + "    ctx.addLength(token.length());")
+                        .add("                " + "    ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + ".add(token);")
                         .add("                " + "    input = input.subList(token.length(), input.size());")
-                        .add("                " + "token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
+                        .add("                " + "    token = " + token.getName() + "(input" + (wrapper.getArgs().isEmpty() ? "" : ", " + wrapper.getArgs()) + ");")
                         .add("                " + "}");
                 break;
         }
@@ -278,6 +287,7 @@ public class ParserGenerator {
                         .add("                " + "if (token.getType() != " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
                         .add("                " + "    break;")
                         .add("                " + "}")
+                        .add("                " + "ctx.addText(token.getText());")
                         .add("                " + "ctx.addLength(1);")
                         .add("                " + "ctx." + token.getName() + (lexerRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
                         .add("                " + "input = input.subList(1, input.size());");
@@ -287,6 +297,7 @@ public class ParserGenerator {
                         .add("                " + grammar.getName() + "Lexer.Token token = input.isEmpty() ? null : input.get(0);")
                         .add("                " + "while (!input.isEmpty() && token.getType() == " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
                         .add("                " + "    ctx.addLength(1);")
+                        .add("                " + "    ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + ".add(token);")
                         .add("                " + "    input = input.subList(1, input.size());")
                         .add("                " + "    token = input.isEmpty() ? null : input.get(0);")
@@ -297,6 +308,7 @@ public class ParserGenerator {
                         .add("                " + grammar.getName() + "Lexer.Token token = input.isEmpty() ? null : input.get(0);")
                         .add("                " + "if (!input.isEmpty() && token.getType() == " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
                         .add("                " + "    ctx.addLength(1);")
+                        .add("                " + "    ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + (lexerRules.getOrDefault(token.getName(), false) ? ".add(token);" : " = token;"))
                         .add("                " + "    input = input.subList(1, input.size());")
                         .add("                " + "}");
@@ -309,11 +321,13 @@ public class ParserGenerator {
                         .add("                " + "    break;")
                         .add("                " + "}")
                         .add("                " + "ctx.addLength(1);")
+                        .add("                " + "ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + ".add(token);")
                         .add("                " + "input = input.subList(1, input.size());")
                         .add("                " + "token = input.get(0);")
                         .add("                " + "while (!input.isEmpty() && token.getType() == " + grammar.getName() + "Lexer.TokenType." + token.getName().toUpperCase() + ") {")
                         .add("                " + "    ctx.addLength(1);")
+                        .add("                " + "    ctx.addText(token.getText());")
                         .add("                " + "    ctx." + token.getName() + ".add(token);")
                         .add("                " + "    input = input.subList(1, input.size());")
                         .add("                " + "    token = input.isEmpty() ? null : input.get(0);")

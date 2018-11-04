@@ -12,6 +12,9 @@ import java.util.stream.Collectors;
 
 public class Grammar {
 
+    private Map<String, Set<String>> first = new HashMap<>();
+    private Map<String, Set<String>> follow = new HashMap<>();
+
     private final LinkedHashMap<String, LexerRule> lexerRules = new LinkedHashMap<>();
     private final LinkedHashMap<String, ParserRule> parserRules = new LinkedHashMap<>();
     private final String name;
@@ -46,7 +49,8 @@ public class Grammar {
         flattenLexerAlternatives();
         flattenParserAlternatives();
         buildDictionary();
-
+        countFirst();
+        countFollow();
     }
 
     public static Grammar parse(Path path) throws IOException {
@@ -150,6 +154,69 @@ public class Grammar {
                         parserRules.put(name, flattened);
                         queue.add(flattened);
                         iter.set(new ParserAlternative.Wrapper(flattened, wrapper.getRepeat(), wrapper.getCode(), rule.getArgs() /* FIXME: _flatten_aaa[String code] -> _flatten_aaa[code] */, wrapper.getCustomName(), wrapper.getCustomOp()));
+                    }
+                }
+            }
+        }
+    }
+
+    private void countFirst() {
+        for (ParserRule rule : parserRules.values()) {
+            first.put(rule.getName(), new HashSet<>());
+        }
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (ParserRule rule : parserRules.values()) {
+                for (List<ParserAlternative.Wrapper> sequence : rule.getAlternatives()) {
+                    for (ParserAlternative.Wrapper wrapper : sequence) {
+                        ParserToken token = wrapper.getToken();
+                        if (token instanceof LexerRule) {
+                            changed |= first.get(rule.getName()).add(((LexerRule) token).getName());
+                        } else if (token instanceof ParserRule) {
+                            changed |= first.get(rule.getName()).addAll(first.get(((ParserRule) token).getName()));
+                        } else {
+                            throw new AssertionError("Wrong parser rule part");
+                        }
+                        if (wrapper.getRepeat() == Token.Repeat.SOME || wrapper.getRepeat() == Token.Repeat.ONCE) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void countFollow() {
+        for (ParserRule rule : parserRules.values()) {
+            follow.put(rule.getName(), new HashSet<>());
+        }
+        ParserRule firstRule = parserRules.values().iterator().next();
+        follow.get(firstRule.getName()).add("_END");
+
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (ParserRule rule : parserRules.values()) {
+                for (List<ParserAlternative.Wrapper> sequence : rule.getAlternatives()) {
+                    for (int i = 0; i < sequence.size(); i++) {
+                        ParserAlternative.Wrapper wrapper = sequence.get(i);
+                        ParserToken current = wrapper.getToken();
+                        if (current instanceof ParserRule) {
+                            if (i < sequence.size() - 1) { // Not last
+                                for (int j = i + 1; j < sequence.size(); j++) {
+                                    ParserAlternative.Wrapper nextWrapper = sequence.get(j);
+                                    ParserToken nextToken = nextWrapper.getToken();
+                                    if (nextToken instanceof ParserRule) {
+                                        changed |= follow.get(((ParserRule) current).getName()).addAll(first.get(((ParserRule) nextToken).getName()));
+                                    } else if (nextToken instanceof LexerRule) {
+                                        changed |= follow.get(((ParserRule) current).getName()).add(((LexerRule) nextToken).getName());
+                                    }
+                                }
+                            } else {
+                                changed |= follow.get(((ParserRule) current).getName()).addAll(follow.get(rule.getName()));
+                            }
+                        }
                     }
                 }
             }
