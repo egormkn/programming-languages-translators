@@ -14,16 +14,17 @@ function main(): int {
 
     var arr: int* = {0, 1, 2}
 
-    var format: char* = "iteration: %d"
+    var fmt: char* = "iteration: %d"
 
     for (var i: int = 0; i < 10; i++) {
         [i]: int = print("iteration: %d")
     }
 
-    arr[0] = 3
+    var d: double = 3 + 2 * 5
+
+    var pi_value: float = 3.1415926
 
     [a, b, c]: int = [b, c, a]
 
     [a, b, c]: int = print("a: %d, b: %d, c: %d")
 }
-
